@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link, { useMessages } from "@/i18n/client";
+import { stripLocale } from "@/i18n/config";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Menu, Network, Search, X } from "lucide-react";
 import type { SystemCategory } from "@/types/schema";
 import type { SearchItem } from "@/lib/search-match";
 import SearchPalette from "./SearchPalette";
 import ThemeToggle from "./ThemeToggle";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export interface NavSystem {
   slug: string;
@@ -18,8 +20,11 @@ export interface NavSystem {
 
 type SystemGroup = { category: string; label: string; systems: NavSystem[] };
 
-/** Static export serves pages with a trailing slash; compare without it. */
-const normalise = (path: string) => (path.length > 1 ? path.replace(/\/$/, "") : path);
+/** Static export serves pages with a trailing slash; compare without it (and without the locale prefix). */
+const normalise = (path: string) => {
+  const bare = stripLocale(path);
+  return bare.length > 1 ? bare.replace(/\/$/, "") : bare;
+};
 
 export default function SiteHeader({
   systemGroups,
@@ -29,6 +34,7 @@ export default function SiteHeader({
   searchIndex: SearchItem[];
 }) {
   const pathname = normalise(usePathname());
+  const t = useMessages();
   const [searchOpen, setSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -88,7 +94,7 @@ export default function SiteHeader({
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          aria-label="Open navigation"
+          aria-label={t.nav.openNavigation}
           aria-expanded={drawerOpen}
           className="rounded-lg p-1.5 text-fg-soft hover:bg-surface-2 md:hidden"
         >
@@ -99,10 +105,10 @@ export default function SiteHeader({
           <span className="bg-brand flex h-7 w-7 items-center justify-center rounded-lg text-[#fff] shadow-soft" aria-hidden>
             <Network size={16} />
           </span>
-          <span className="truncate">System Design Explainer</span>
+          <span className="truncate">{t.site.name}</span>
         </Link>
 
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+        <nav aria-label={t.nav.main} className="hidden items-center gap-1 md:flex">
           <div ref={menuRef} className="relative">
             <button
               type="button"
@@ -113,7 +119,7 @@ export default function SiteHeader({
                 onSystems ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"
               }`}
             >
-              Systems
+              {t.nav.systems}
               <ChevronDown size={14} className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden />
             </button>
             {menuOpen && (
@@ -148,26 +154,27 @@ export default function SiteHeader({
                   ))}
                 </div>
                 <Link href="/" onClick={closeAll} className="mt-4 inline-block text-sm font-medium text-accent hover:underline">
-                  Browse all systems →
+                  {t.nav.browseAll}
                 </Link>
               </div>
             )}
           </div>
-          {navLink("/components", "Components")}
-          {navLink("/concepts", "Concepts")}
+          {navLink("/components", t.nav.components)}
+          {navLink("/concepts", t.nav.concepts)}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={openSearch}
-            aria-label="Search"
+            aria-label={t.nav.search}
             className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-line-strong hover:text-fg md:w-56"
           >
             <Search size={15} aria-hidden />
-            <span className="hidden flex-1 text-left md:inline">Search…</span>
+            <span className="hidden flex-1 text-left md:inline">{t.nav.searchPlaceholder}</span>
             <kbd className="hidden rounded border border-line px-1.5 text-[10px] md:inline">Ctrl K</kbd>
           </button>
+          <LanguageSwitcher />
           <div className="hidden md:block">
             <ThemeToggle compact />
           </div>
@@ -175,25 +182,25 @@ export default function SiteHeader({
       </div>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label={t.nav.navigation}>
           <div className="absolute inset-0 bg-bg/70" onClick={() => setDrawerOpen(false)} />
           <aside className="relative flex h-full w-80 max-w-[88vw] flex-col border-r border-line bg-surface">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <span className="font-semibold text-fg">Menu</span>
+              <span className="font-semibold text-fg">{t.nav.menu}</span>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                aria-label="Close navigation"
+                aria-label={t.nav.closeNavigation}
                 className="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
               >
                 <X size={18} />
               </button>
             </div>
-            <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-3 py-3">
+            <nav aria-label={t.nav.mobile} className="flex-1 overflow-y-auto px-3 py-3">
               <div className="mb-3 flex gap-1">
-                {navLink("/", "Systems")}
-                {navLink("/components", "Components")}
-                {navLink("/concepts", "Concepts")}
+                {navLink("/", t.nav.systems)}
+                {navLink("/components", t.nav.components)}
+                {navLink("/concepts", t.nav.concepts)}
               </div>
               {systemGroups.map((group) => (
                 <div key={group.label} className="mb-4" data-category={group.category}>

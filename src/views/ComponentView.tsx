@@ -1,40 +1,31 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/i18n/client";
 import { notFound } from "next/navigation";
 import type { ServiceOption, ServiceProvider } from "@/types/schema";
-import {
-  componentCategoryLabels,
-  components,
-  getComponentKind,
-  getConcept,
-  usagesOfComponent,
-} from "@/content";
-import { providers } from "@/content/providers";
+import { components, getContent } from "@/content";
+import { getProviders } from "@/content/providers";
+import type { Locale } from "@/i18n/config";
+import { getMessages, type Messages } from "@/i18n/messages";
 import { KindIcon } from "@/lib/icons";
 import { getCategoryColor } from "@/lib/resolve";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
+export function componentStaticParams() {
   return components.map((c) => ({ id: c.id }));
 }
 
-export async function generateMetadata(props: PageProps<"/components/[id]">): Promise<Metadata> {
-  const { id } = await props.params;
-  const kind = getComponentKind(id);
+export function componentMetadata(locale: Locale, id: string): Metadata {
+  const kind = getContent(locale).getComponentKind(id);
   if (!kind) return {};
-  return {
-    title: `${kind.name} · Components · System Design Explainer`,
-    description: kind.what,
-  };
+  return { title: getMessages(locale).components.kindMetaTitle(kind.name), description: kind.what };
 }
 
-const serviceProviders = providers.filter((p) => p.id !== "generic") as (typeof providers[number] & {
-  id: ServiceProvider;
-})[];
-
-export default async function ComponentPage(props: PageProps<"/components/[id]">) {
-  const { id } = await props.params;
+export default function ComponentView({ locale, id }: { locale: Locale; id: string }) {
+  const t = getMessages(locale);
+  const { componentCategoryLabels, getComponentKind, getConcept, usagesOfComponent } = getContent(locale);
+  const providers = getProviders(locale);
+  const serviceProviders = providers.filter((p) => p.id !== "generic") as (typeof providers[number] & {
+    id: ServiceProvider;
+  })[];
   const kind = getComponentKind(id);
   if (!kind) notFound();
 
@@ -44,7 +35,7 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
   return (
     <div className="max-w-5xl px-4 py-6 md:px-8 md:py-10">
       <Link href="/components" className="text-xs text-muted hover:text-fg">
-        ← All components
+        {t.components.allComponents}
       </Link>
 
       <div className="mt-4 flex items-start gap-4">
@@ -65,15 +56,15 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
 
       {(kind.whenToUse.length > 0 || kind.pitfalls.length > 0) && (
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {kind.whenToUse.length > 0 && <ListCard title="When to use" items={kind.whenToUse} />}
-          {kind.pitfalls.length > 0 && <ListCard title="Pitfalls" items={kind.pitfalls} />}
+          {kind.whenToUse.length > 0 && <ListCard title={t.components.whenToUse} items={kind.whenToUse} />}
+          {kind.pitfalls.length > 0 && <ListCard title={t.components.pitfalls} items={kind.pitfalls} />}
         </div>
       )}
 
       {(Object.keys(kind.providers).length > 0 || kind.thirdParty.length > 0) && (
         <section className="mt-10">
-          <h2 className="text-xl font-bold text-fg">Options by provider</h2>
-          <p className="mt-1 text-sm text-muted">The first option is what diagrams show for that provider.</p>
+          <h2 className="text-xl font-bold text-fg">{t.components.optionsByProvider}</h2>
+          <p className="mt-1 text-sm text-muted">{t.components.firstOption}</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {serviceProviders.map((p) => {
               const options = kind.providers[p.id];
@@ -83,14 +74,14 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
                   <h3 className="text-sm font-semibold" style={{ color: p.accent }}>
                     {p.name}
                   </h3>
-                  <OptionList options={options} />
+                  <OptionList options={options} t={t} />
                 </div>
               );
             })}
             {kind.thirdParty.length > 0 && (
               <div className="rounded-xl border border-line bg-surface/40 p-4">
-                <h3 className="text-sm font-semibold text-fg-soft">Third-party (works with any cloud)</h3>
-                <OptionList options={kind.thirdParty} />
+                <h3 className="text-sm font-semibold text-fg-soft">{t.components.thirdPartyAnyCloud}</h3>
+                <OptionList options={kind.thirdParty} t={t} />
               </div>
             )}
           </div>
@@ -99,7 +90,7 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
 
       {kind.concepts.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-xl font-bold text-fg">Related concepts</h2>
+          <h2 className="text-xl font-bold text-fg">{t.components.relatedConcepts}</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {kind.concepts.map((slug) => (
               <Link
@@ -115,9 +106,9 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
       )}
 
       <section className="mt-10">
-        <h2 className="text-xl font-bold text-fg">Used in</h2>
+        <h2 className="text-xl font-bold text-fg">{t.components.usedIn}</h2>
         {usages.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Not used in any system yet.</p>
+          <p className="mt-2 text-sm text-muted">{t.components.notUsed}</p>
         ) : (
           <ul className="mt-4 space-y-3">
             {usages.map(({ system, nodes }) => (
@@ -147,7 +138,7 @@ export default async function ComponentPage(props: PageProps<"/components/[id]">
   );
 }
 
-function OptionList({ options }: { options: ServiceOption[] }) {
+function OptionList({ options, t }: { options: ServiceOption[]; t: Messages }) {
   return (
     <ul className="mt-2 space-y-1.5">
       {options.map((o) => (
@@ -161,7 +152,7 @@ function OptionList({ options }: { options: ServiceOption[] }) {
               o.managed ? "bg-sky-500/10 text-sky-300" : "bg-line-strong/50 text-fg-soft"
             }`}
           >
-            {o.managed ? "Managed" : "Self-hosted"}
+            {o.managed ? t.components.managed : t.components.selfHosted}
           </span>
         </li>
       ))}

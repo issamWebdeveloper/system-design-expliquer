@@ -1,7 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { VisualButton, VisualFrame, fnv1a } from "./shared";
+import { VisualButton, VisualFrame, fnv1a, useCopy } from "./shared";
+
+const copy = {
+  en: {
+    title: "Try it: add and check URLs",
+    hint: "Each URL sets 3 bits. A lookup is 'definitely new' if any of its bits is 0, otherwise 'probably seen'.",
+    bitArray: "Bit array",
+    check: "Check",
+    add: "Add",
+    bitsFor: "Bits for this URL (amber):",
+    probablySeen: "Probably seen",
+    falsePositive: " — a false positive: it was never added!",
+    notSeen: "Definitely not seen — skip the database.",
+    added: "Added so far:",
+  },
+  fr: {
+    title: "Essayez : ajoutez et vérifiez des URL",
+    hint: "Chaque URL active 3 bits. Une recherche répond « forcément nouvelle » si l'un de ses bits vaut 0, sinon « probablement déjà vue ».",
+    bitArray: "Tableau de bits",
+    check: "Vérifier",
+    add: "Ajouter",
+    bitsFor: "Bits de cette URL (en ambre) :",
+    probablySeen: "Probablement déjà vue",
+    falsePositive: " — un faux positif : elle n'a jamais été ajoutée !",
+    notSeen: "Forcément jamais vue — inutile d'interroger la base.",
+    added: "Ajoutées jusqu'ici :",
+  },
+};
 
 const BITS = 32;
 const SEEDS = [0x811c9dc5, 0x01000193, 0x9e3779b9];
@@ -10,6 +37,7 @@ const positions = (item: string) => [...new Set(SEEDS.map((seed) => fnv1a(item, 
 const START = ["example.com/a", "example.com/b", "news.site/today"];
 
 export default function BloomFilter() {
+  const c = useCopy(copy);
   const [items, setItems] = useState(START);
   const [input, setInput] = useState("example.com/c");
   const [checked, setChecked] = useState<string | null>(null);
@@ -20,10 +48,10 @@ export default function BloomFilter() {
 
   return (
     <VisualFrame
-      title="Try it: add and check URLs"
-      hint="Each URL sets 3 bits. A lookup is 'definitely new' if any of its bits is 0, otherwise 'probably seen'."
+      title={c.title}
+      hint={c.hint}
     >
-      <div className="grid grid-cols-8 gap-1 sm:grid-cols-16" role="img" aria-label="Bit array">
+      <div className="grid grid-cols-8 gap-1 sm:grid-cols-16" role="img" aria-label={c.bitArray}>
         {Array.from({ length: BITS }, (_, i) => {
           const set = bits.has(i);
           const probed = probe.includes(i);
@@ -52,7 +80,7 @@ export default function BloomFilter() {
           className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 font-mono text-sm text-fg focus:border-accent focus:outline-none"
         />
         <VisualButton onClick={() => setChecked(input.trim())} disabled={!input.trim()}>
-          Check
+          {c.check}
         </VisualButton>
         <VisualButton
           primary
@@ -62,22 +90,23 @@ export default function BloomFilter() {
             setChecked(null);
           }}
         >
-          Add
+          {c.add}
         </VisualButton>
       </div>
 
       <p className="mt-3 text-sm" aria-live="polite">
-        Bits for this URL (amber): {probe.join(", ")}.{" "}
+        {c.bitsFor} {probe.join(", ")}.{" "}
         {checked !== null &&
           (maybe ? (
             <span className="font-semibold text-amber-300">
-              Probably seen{items.includes(checked) ? "" : " — a false positive: it was never added!"}
+              {c.probablySeen}
+              {items.includes(checked) ? "" : c.falsePositive}
             </span>
           ) : (
-            <span className="font-semibold text-emerald-300">Definitely not seen — skip the database.</span>
+            <span className="font-semibold text-emerald-300">{c.notSeen}</span>
           ))}
       </p>
-      <p className="mt-2 text-xs text-muted">Added so far: {items.join(" · ")}</p>
+      <p className="mt-2 text-xs text-muted">{c.added} {items.join(" · ")}</p>
     </VisualFrame>
   );
 }

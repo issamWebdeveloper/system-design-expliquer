@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLocale, useMessages } from "@/i18n/client";
 import { X } from "lucide-react";
 import type { Provider, ServiceOption, ServiceProvider, SystemDesign } from "@/types/schema";
 import { getCategoryColor, resolveService } from "@/lib/resolve";
-import { getComponentKind, getConcept } from "@/content";
-import { getProvider, providers } from "@/content/providers";
+import { getContent } from "@/content";
+import { getProvider, getProviders } from "@/content/providers";
+import type { Messages } from "@/i18n/messages";
 
 interface NodeDetailPanelProps {
   nodeId: string | null;
@@ -16,9 +17,6 @@ interface NodeDetailPanelProps {
   variant?: "overlay" | "sheet";
 }
 
-const serviceProviders = providers.filter(
-  (p): p is typeof p & { id: ServiceProvider } => p.id !== "generic",
-);
 
 function OptionList({ options }: { options: ServiceOption[] }) {
   return (
@@ -40,6 +38,12 @@ export default function NodeDetailPanel({
   onClose,
   variant = "overlay",
 }: NodeDetailPanelProps) {
+  const locale = useLocale();
+  const t: Messages = useMessages();
+  const { getComponentKind, getConcept } = getContent(locale);
+  const serviceProviders = getProviders(locale).filter(
+    (p): p is typeof p & { id: ServiceProvider } => p.id !== "generic",
+  );
   const systemNode = system.nodes.find((n) => n.id === nodeId);
 
   if (!systemNode) return null;
@@ -73,7 +77,7 @@ export default function NodeDetailPanel({
           type="button"
           onClick={onClose}
           className="rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-fg"
-          aria-label="Close panel"
+          aria-label={t.node.closePanel}
         >
           <X size={16} />
         </button>
@@ -82,7 +86,7 @@ export default function NodeDetailPanel({
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
         <section>
           <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Role in {system.name}
+            {t.node.roleIn(system.name)}
           </h3>
           <p className="mt-1 text-sm leading-relaxed text-fg-soft">{systemNode.role}</p>
         </section>
@@ -90,7 +94,7 @@ export default function NodeDetailPanel({
         {kind && (
           <section>
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              What it is
+              {t.node.whatItIs}
             </h3>
             <p className="mt-1 text-sm leading-relaxed text-fg-soft">{kind.what}</p>
           </section>
@@ -99,7 +103,7 @@ export default function NodeDetailPanel({
         {kind && (Object.keys(kind.providers).length > 0 || kind.thirdParty.length > 0) && (
           <section>
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              Options by provider
+              {t.node.optionsByProvider}
             </h3>
             <div className="mt-2 space-y-2">
               {serviceProviders.map((p) => {
@@ -118,7 +122,7 @@ export default function NodeDetailPanel({
                     </p>
                     {override && (
                       <p className="mt-1 text-sm text-fg-soft">
-                        {override} <span className="text-xs text-muted">— used here</span>
+                        {override} <span className="text-xs text-muted">{t.node.usedHere}</span>
                       </p>
                     )}
                     {options && <OptionList options={options} />}
@@ -127,7 +131,7 @@ export default function NodeDetailPanel({
               })}
               {kind.thirdParty.length > 0 && (
                 <div className="rounded-lg border border-line px-3 py-2">
-                  <p className="text-xs font-semibold text-muted">Third-party (any cloud)</p>
+                  <p className="text-xs font-semibold text-muted">{t.node.thirdPartyAnyCloud}</p>
                   <OptionList options={kind.thirdParty} />
                 </div>
               )}
@@ -138,7 +142,7 @@ export default function NodeDetailPanel({
         {kind && kind.whenToUse.length > 0 && (
           <section>
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              When to use
+              {t.node.whenToUse}
             </h3>
             <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-fg-soft">
               {kind.whenToUse.map((item) => <li key={item}>{item}</li>)}
@@ -149,7 +153,7 @@ export default function NodeDetailPanel({
         {kind && kind.pitfalls.length > 0 && (
           <section>
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              Pitfalls
+              {t.node.pitfalls}
             </h3>
             <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-fg-soft">
               {kind.pitfalls.map((item) => <li key={item}>{item}</li>)}
@@ -160,7 +164,7 @@ export default function NodeDetailPanel({
         {kind && kind.concepts.length > 0 && (
           <section>
             <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              Concepts
+              {t.node.concepts}
             </h3>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {kind.concepts.map((slug) => (
@@ -182,7 +186,7 @@ export default function NodeDetailPanel({
           href={`/components/${kind.id}`}
           className="border-t border-line px-5 py-3 text-sm font-medium text-indigo-300 hover:bg-surface hover:text-indigo-200"
         >
-          All about {kind.name.toLowerCase()} →
+          {t.node.allAbout(kind.name)}
         </Link>
       )}
     </aside>

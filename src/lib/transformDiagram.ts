@@ -1,6 +1,7 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
 import type { ComponentCategory, Provider, SystemDesign, SystemEdge } from "@/types/schema";
-import { getComponentKind } from "@/content";
+import { getContent } from "@/content";
+import type { Locale } from "@/i18n/config";
 import { resolveService } from "./resolve";
 import type { SystemLayout } from "./layout";
 
@@ -19,20 +20,20 @@ export interface ArchitectureNodeData extends Record<string, unknown> {
 }
 
 export interface TierNodeData extends Record<string, unknown> {
-  label: string;
   tier: string;
 }
 
 type Protocol = NonNullable<SystemEdge["protocol"]> | "default";
 
-export const edgeStyles: Record<Protocol, { label: string; color: string; dash?: string; animated?: boolean }> = {
-  default: { label: "Request (HTTPS)", color: "#64748b" },
-  https: { label: "Request (HTTPS)", color: "#64748b" },
-  grpc: { label: "Internal RPC (gRPC)", color: "#0ea5e9" },
-  ws: { label: "Persistent connection (WebSocket)", color: "#22c55e" },
-  async: { label: "Async message / job", color: "#a855f7", dash: "6 4", animated: true },
-  stream: { label: "Event stream", color: "#14b8a6", dash: "6 4", animated: true },
-  cdc: { label: "Change data capture", color: "#f97316", dash: "2 4" },
+/** Line style per protocol; legend labels live in the messages (diagram.protocols). */
+export const edgeStyles: Record<Protocol, { color: string; dash?: string; animated?: boolean }> = {
+  default: { color: "#64748b" },
+  https: { color: "#64748b" },
+  grpc: { color: "#0ea5e9" },
+  ws: { color: "#22c55e" },
+  async: { color: "#a855f7", dash: "6 4", animated: true },
+  stream: { color: "#14b8a6", dash: "6 4", animated: true },
+  cdc: { color: "#f97316", dash: "2 4" },
 };
 
 const FLOW_COLOR = "#f59e0b";
@@ -49,7 +50,9 @@ export function systemToFlow(
   layout: SystemLayout,
   selectedNodeId: string | null,
   flow: FlowHighlight | null = null,
+  locale: Locale = "en",
 ): { nodes: Node[]; edges: Edge[] } {
+  const { getComponentKind } = getContent(locale);
   const flowNodeIds = new Set<string>();
   const stepNodeIds = new Set<string>();
   if (flow) {
@@ -69,7 +72,7 @@ export function systemToFlow(
     id: `tier-${box.id}`,
     type: "tier",
     position: { x: box.x, y: box.y },
-    data: { label: box.label, tier: box.id },
+    data: { tier: box.id },
     style: { width: box.width, height: box.height },
     draggable: false,
     selectable: false,

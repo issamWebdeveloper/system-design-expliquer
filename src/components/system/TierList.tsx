@@ -1,7 +1,8 @@
 "use client";
 
 import type { Provider, SystemDesign } from "@/types/schema";
-import { getComponentKind } from "@/content";
+import { getContent } from "@/content";
+import { useLocale, useMessages } from "@/i18n/client";
 import { getCategoryColor, resolveService } from "@/lib/resolve";
 import { tierOf, tiers } from "@/lib/layout";
 import { KindIcon } from "@/lib/icons";
@@ -24,6 +25,8 @@ export default function TierList({
   activeNodeIds: Set<string>;
   onNodeSelect: (nodeId: string) => void;
 }) {
+  const t = useMessages();
+  const { getComponentKind } = getContent(useLocale());
   const groups = tiers
     .map((tier) => ({
       tier,
@@ -35,7 +38,7 @@ export default function TierList({
     <div className="space-y-4">
       {groups.map(({ tier, nodes }) => (
         <section key={tier.id}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted">{tier.label}</h3>
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted">{t.diagram.tiers[tier.id]}</h3>
           <ul className="space-y-1.5">
             {nodes.map((node) => {
               const kind = getComponentKind(node.kind);

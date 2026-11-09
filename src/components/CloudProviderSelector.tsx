@@ -1,7 +1,8 @@
 "use client";
 
 import type { Provider } from "@/types/schema";
-import { providers } from "@/content/providers";
+import { getProviders } from "@/content/providers";
+import { useLocale, useMessages } from "@/i18n/client";
 import { useSlidingIndicator } from "@/lib/useSlidingIndicator";
 
 interface CloudProviderSelectorProps {
@@ -13,13 +14,16 @@ export default function CloudProviderSelector({
   selected,
   onChange,
 }: CloudProviderSelectorProps) {
+  const locale = useLocale();
+  const t = useMessages();
+  const providers = getProviders(locale);
   const activeIndex = providers.findIndex((p) => p.id === selected);
   const { ref, box } = useSlidingIndicator<HTMLDivElement>(activeIndex);
   const activeAccent = providers[activeIndex]?.accent;
 
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden text-xs font-medium text-muted sm:inline">Cloud</span>
+      <span className="hidden text-xs font-medium text-muted sm:inline">{t.diagram.cloud}</span>
       <div ref={ref} className="relative flex flex-wrap rounded-lg bg-surface-2 p-0.5">
         {box && (
           <span

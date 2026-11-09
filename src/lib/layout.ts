@@ -6,13 +6,14 @@ export const NODE_WIDTH = 200;
 export const NODE_HEIGHT = 84;
 
 /** Columns of the diagram, left to right. Every component category lands in one tier. */
+/** Tier names are translated in the messages (diagram.tiers). */
 export const tiers = [
-  { id: "clients", label: "Clients" },
-  { id: "edge", label: "Edge & security" },
-  { id: "services", label: "Services" },
-  { id: "async", label: "Async & streaming" },
-  { id: "data", label: "Data" },
-  { id: "platform", label: "Analytics & platform" },
+  { id: "clients" },
+  { id: "edge" },
+  { id: "services" },
+  { id: "async" },
+  { id: "data" },
+  { id: "platform" },
 ] as const;
 export type TierId = (typeof tiers)[number]["id"];
 
@@ -48,7 +49,7 @@ export function tierOf(category: ComponentCategory | undefined): TierId {
 export interface SystemLayout {
   positions: Record<string, { x: number; y: number }>;
   /** Bounding box of each tier that has at least one node. */
-  tierBoxes: { id: TierId; label: string; x: number; y: number; width: number; height: number }[];
+  tierBoxes: { id: TierId; x: number; y: number; width: number; height: number }[];
 }
 
 const elk = new ELK();
@@ -115,7 +116,7 @@ export function layoutSystem(system: SystemDesign): Promise<SystemLayout> {
         if (ys.length === 0) return [];
         const top = Math.min(...ys) - TIER_PADDING - TIER_HEADER;
         const bottom = Math.max(...ys) + NODE_HEIGHT + TIER_PADDING;
-        return [{ id: tier.id, label: tier.label, x: left, y: top, width: right - left, height: bottom - top }];
+        return [{ id: tier.id, x: left, y: top, width: right - left, height: bottom - top }];
       });
 
       return { positions, tierBoxes };

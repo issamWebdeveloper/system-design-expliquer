@@ -1,6 +1,7 @@
 "use client";
 
 import { Play } from "lucide-react";
+import { useMessages } from "@/i18n/client";
 import { PLAY_FLOW_EVENT, scrollToSection, updateSearchParams } from "@/lib/url";
 
 /** Selects a node on the diagram and scrolls up to it. */
@@ -21,6 +22,7 @@ export function NodeChip({ nodeId, label }: { nodeId: string; label: string }) {
 
 /** Starts a flow walkthrough on the diagram and scrolls up to it. */
 export function PlayFlowButton({ flowId }: { flowId: string }) {
+  const t = useMessages();
   return (
     <button
       type="button"
@@ -31,7 +33,7 @@ export function PlayFlowButton({ flowId }: { flowId: string }) {
       }}
       className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/25"
     >
-      <Play size={12} /> Play on diagram
+      <Play size={12} /> {t.system.playOnDiagram}
     </button>
   );
 }

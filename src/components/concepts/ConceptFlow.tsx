@@ -5,11 +5,13 @@ import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw } from "lucide-react"
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
 import type { SystemDesign } from "@/types/schema";
 import type { FlowHighlight } from "@/lib/transformDiagram";
+import { useMessages } from "@/i18n/client";
 
 const STEP_INTERVAL_MS = 2600;
 
 /** A concept's mini-architecture with its own step-through player (state is local, not in the URL). */
 export default function ConceptFlow({ system }: { system: SystemDesign }) {
+  const t = useMessages();
   const [flowIndex, setFlowIndex] = useState(0);
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -46,7 +48,7 @@ export default function ConceptFlow({ system }: { system: SystemDesign }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       {system.flows.length > 1 && (
-        <div role="tablist" aria-label="Scenarios" className="flex flex-wrap gap-1 border-b border-line px-3 py-2">
+        <div role="tablist" aria-label={t.diagram.scenarios} className="flex flex-wrap gap-1 border-b border-line px-3 py-2">
           {system.flows.map((f, i) => (
             <button
               key={f.id}
@@ -78,11 +80,11 @@ export default function ConceptFlow({ system }: { system: SystemDesign }) {
       {flow && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
           <div className="flex items-center gap-0.5">
-            <ControlButton label="Previous step" disabled={step === 0} onClick={() => setStep(step - 1)}>
+            <ControlButton label={t.diagram.previousStep} disabled={step === 0} onClick={() => setStep(step - 1)}>
               <ChevronLeft size={16} />
             </ControlButton>
             <ControlButton
-              label={playing ? "Pause" : "Play"}
+              label={playing ? t.diagram.pause : t.diagram.play}
               onClick={() => {
                 if (!playing && step === last) setStep(0);
                 setPlaying(!playing);
@@ -90,10 +92,10 @@ export default function ConceptFlow({ system }: { system: SystemDesign }) {
             >
               {playing ? <Pause size={16} /> : <Play size={16} />}
             </ControlButton>
-            <ControlButton label="Next step" disabled={step === last} onClick={() => setStep(step + 1)}>
+            <ControlButton label={t.diagram.nextStep} disabled={step === last} onClick={() => setStep(step + 1)}>
               <ChevronRight size={16} />
             </ControlButton>
-            <ControlButton label="Restart" onClick={() => setStep(0)}>
+            <ControlButton label={t.diagram.restart} onClick={() => setStep(0)}>
               <RotateCcw size={14} />
             </ControlButton>
           </div>

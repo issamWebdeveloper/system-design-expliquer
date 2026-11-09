@@ -1,73 +1,33 @@
-import Link from "next/link";
+import Link from "@/i18n/client";
 import { ArrowRight, Boxes, Cloud, Lightbulb, PlayCircle } from "lucide-react";
 import SystemCatalogue, { type CatalogueCard } from "@/components/site/SystemCatalogue";
 import HeroDiagram from "@/components/site/HeroDiagram";
 import LearningPaths, { type LearningPath } from "@/components/site/LearningPaths";
-import {
-  components,
-  concepts,
-  difficultyLabels,
-  getConcept,
-  getSystem,
-  systemCategoryLabels,
-  systems,
-} from "@/content";
+import { getContent } from "@/content";
+import type { Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/messages";
 
+/** Icons and hues for the four "what you can do" cards; their text comes from the messages. */
 const lenses = [
-  {
-    icon: Cloud,
-    hue: "infrastructure",
-    title: "Switch clouds",
-    text: "Relabel every component for AWS, Google Cloud, Azure or open source in one click.",
-  },
-  {
-    icon: PlayCircle,
-    hue: "mobility",
-    title: "Play walkthroughs",
-    text: "Follow a request hop by hop — upload a video, book a seat, pay a merchant.",
-  },
-  {
-    icon: Boxes,
-    hue: "commerce-fintech",
-    title: "Inspect components",
-    text: "Every building block with its options per provider, pitfalls and where it's used.",
-  },
-  {
-    icon: Lightbulb,
-    hue: "bookings",
-    title: "Learn the patterns",
-    text: "Caching, sharding, fan-out, sagas, idempotency — explained and linked to real designs.",
-  },
+  { icon: Cloud, hue: "infrastructure" },
+  { icon: PlayCircle, hue: "mobility" },
+  { icon: Boxes, hue: "commerce-fintech" },
+  { icon: Lightbulb, hue: "bookings" },
 ];
 
+/** Systems in each learning path, in order; titles and levels come from the messages. */
 const learningPaths = [
-  {
-    title: "Foundations",
-    hue: "infrastructure",
-    level: "Start here",
-    slugs: ["url-shortener", "pastebin", "rate-limiter", "typeahead"],
-  },
-  {
-    title: "Real-time systems",
-    hue: "mobility",
-    level: "Intermediate",
-    slugs: ["whatsapp", "websocket-scale", "live-sports", "uber"],
-  },
-  {
-    title: "Media at scale",
-    hue: "media-social",
-    level: "Advanced",
-    slugs: ["instagram", "twitter", "youtube", "netflix"],
-  },
-  {
-    title: "Money & bookings",
-    hue: "commerce-fintech",
-    level: "Advanced",
-    slugs: ["bookmyshow", "amazon", "payments", "bnpl"],
-  },
+  { hue: "infrastructure", slugs: ["url-shortener", "pastebin", "rate-limiter", "typeahead"] },
+  { hue: "mobility", slugs: ["whatsapp", "websocket-scale", "live-sports", "uber"] },
+  { hue: "media-social", slugs: ["instagram", "twitter", "youtube", "netflix"] },
+  { hue: "commerce-fintech", slugs: ["bookmyshow", "amazon", "payments", "bnpl"] },
 ];
 
-export default function HomePage() {
+export default function HomeView({ locale }: { locale: Locale }) {
+  const t = getMessages(locale);
+  const { components, concepts, difficultyLabels, getConcept, getSystem, systemCategoryLabels, systems } =
+    getContent(locale);
+  const lensCards = lenses.map((lens, i) => ({ ...lens, ...t.home.lenses[i] }));
   const hero = getSystem("url-shortener") ?? systems[0];
 
   const cards: CatalogueCard[] = systems.map((s) => ({
@@ -84,8 +44,9 @@ export default function HomePage() {
     concepts: s.concepts.map((slug) => ({ slug, name: getConcept(slug)?.name ?? slug })),
   }));
 
-  const paths: LearningPath[] = learningPaths.map(({ slugs, ...path }) => ({
-    ...path,
+  const paths: LearningPath[] = learningPaths.map(({ slugs, hue }, i) => ({
+    ...t.home.paths[i],
+    hue,
     systems: slugs.flatMap((slug) => {
       const s = getSystem(slug);
       return s ? [{ slug, name: s.name }] : [];
@@ -109,27 +70,27 @@ export default function HomePage() {
           </div>
           <div>
             <p className="text-sm font-medium text-accent">
-              {systems.length} systems · {components.length} components · {concepts.length} concepts
+              {t.home.stats(systems.length, components.length, concepts.length)}
             </p>
             <h1 className="mt-3 text-4xl font-semibold tracking-tight text-fg md:text-5xl">
-              How are large systems <span className="text-brand">built?</span>
+              {t.home.titleStart}
+              <span className="text-brand">{t.home.titleAccent}</span>
             </h1>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Interactive architectures for YouTube, Uber, Amazon and more — switch between AWS, Google Cloud,
-              Azure and open-source tools, and follow every request hop by hop.
+              {t.home.intro}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 href="/systems/youtube"
                 className="inline-flex items-center gap-2 bg-brand shadow-soft rounded-xl px-4 py-2.5 text-sm font-semibold text-[#fff] transition-all hover:-translate-y-0.5 hover:opacity-95"
               >
-                Explore YouTube <ArrowRight size={16} aria-hidden />
+                {t.home.exploreYoutube} <ArrowRight size={16} aria-hidden />
               </Link>
               <a
                 href="#catalogue"
                 className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:border-line-strong"
               >
-                Browse all systems
+                {t.home.browseAll}
               </a>
             </div>
           </div>
@@ -139,10 +100,10 @@ export default function HomePage() {
         {/* What you can do */}
         <section aria-labelledby="lenses" className="py-6">
           <h2 id="lenses" className="sr-only">
-            What you can do
+            {t.home.whatYouCanDo}
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {lenses.map(({ icon: Icon, hue, title, text }) => (
+            {lensCards.map(({ icon: Icon, hue, title, text }) => (
               <li
                 key={title}
                 data-category={hue}
@@ -174,10 +135,10 @@ export default function HomePage() {
         />
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <h2 id="paths" className="text-2xl font-semibold tracking-tight text-fg">
-            Learning paths
+            {t.home.pathsTitle}
           </h2>
           <p className="mt-1 text-muted">
-            Each path builds on the patterns from the one before. Progress is saved in this browser.
+            {t.home.pathsIntro}
           </p>
           <LearningPaths paths={paths} />
         </div>
@@ -187,11 +148,12 @@ export default function HomePage() {
         {/* Catalogue */}
         <section id="catalogue" aria-labelledby="catalogue-title" className="scroll-mt-4 pb-16 pt-6">
           <h2 id="catalogue-title" className="text-2xl font-semibold tracking-tight text-fg">
-            All systems
+            {t.home.allSystems}
           </h2>
           <SystemCatalogue
             cards={cards}
             categories={categories}
+            difficulties={([1, 2, 3] as const).map((d) => ({ value: String(d), label: difficultyLabels[d] }))}
             conceptOptions={concepts.map((c) => ({ value: c.slug, label: c.name }))}
           />
         </section>

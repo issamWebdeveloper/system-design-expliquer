@@ -2,6 +2,7 @@
 
 import { useUrlParam } from "@/lib/useUrlParam";
 import { updateSearchParams } from "@/lib/url";
+import { useMessages } from "@/i18n/client";
 
 export interface WorkspaceTab {
   id: string;
@@ -11,6 +12,7 @@ export interface WorkspaceTab {
 
 /** Tabs for the details panel; the active tab is kept in the URL as ?tab=. */
 export default function WorkspaceTabs({ tabs }: { tabs: WorkspaceTab[] }) {
+  const t = useMessages();
   const requested = useUrlParam("tab", tabs[0].id);
   const active = tabs.find((t) => t.id === requested) ?? tabs[0];
 
@@ -18,7 +20,7 @@ export default function WorkspaceTabs({ tabs }: { tabs: WorkspaceTab[] }) {
     <>
       <div
         role="tablist"
-        aria-label="System details"
+        aria-label={t.system.detailsTabs}
         className="sticky top-0 z-[5] flex gap-1 overflow-x-auto border-b border-line bg-surface/95 px-3 pt-2 backdrop-blur"
       >
         {tabs.map((tab) => {

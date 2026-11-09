@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/i18n/client";
 import type { ComponentCategory, ServiceProvider } from "@/types/schema";
-import { componentCategoryLabels, components, usagesOfComponent } from "@/content";
-import { providers } from "@/content/providers";
+import { getContent } from "@/content";
+import { getProviders } from "@/content/providers";
+import type { Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/messages";
 import { KindIcon } from "@/lib/icons";
 import { getCategoryColor } from "@/lib/resolve";
 
-export const metadata: Metadata = {
-  title: "Components · System Design Explainer",
-  description: "Every building block used in the system designs, mapped to AWS, Google Cloud, Azure and open-source tools.",
-};
+export function componentsMetadata(locale: Locale): Metadata {
+  const t = getMessages(locale);
+  return { title: t.components.metaTitle, description: t.components.metaDescription };
+}
 
-const serviceProviders = providers.filter((p) => p.id !== "generic") as (typeof providers[number] & {
-  id: ServiceProvider;
-})[];
-
-export default function ComponentsPage() {
+export default function ComponentsView({ locale }: { locale: Locale }) {
+  const t = getMessages(locale);
+  const { componentCategoryLabels, components, usagesOfComponent } = getContent(locale);
+  const providers = getProviders(locale);
+  const serviceProviders = providers.filter((p) => p.id !== "generic") as (typeof providers[number] & {
+    id: ServiceProvider;
+  })[];
   const groups = (Object.keys(componentCategoryLabels) as ComponentCategory[])
     .map((category) => ({ category, items: components.filter((c) => c.category === category) }))
     .filter((g) => g.items.length > 0 && g.category !== "client");
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-10">
-      <h1 className="text-3xl font-bold text-fg">Components</h1>
+      <h1 className="text-3xl font-bold text-fg">{t.components.title}</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        The building blocks behind every design, with the default service on each cloud and open-source
-        alternatives. Open one for all the options, when to use it and where it appears.
+        {t.components.intro}
       </p>
 
       <div className="mt-8 space-y-10">
@@ -38,13 +41,13 @@ export default function ComponentsPage() {
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="bg-surface text-[11px] uppercase tracking-wider text-muted">
                   <tr>
-                    <th className="w-60 px-4 py-2.5 font-semibold">Component</th>
+                    <th className="w-60 px-4 py-2.5 font-semibold">{t.components.component}</th>
                     {serviceProviders.map((p) => (
                       <th key={p.id} className="px-4 py-2.5 font-semibold" style={{ color: p.accent }}>
                         {p.shortName}
                       </th>
                     ))}
-                    <th className="w-24 px-4 py-2.5 font-semibold">Used in</th>
+                    <th className="w-24 px-4 py-2.5 font-semibold">{t.components.usedIn}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -75,7 +78,7 @@ export default function ComponentsPage() {
                                   )}
                                 </>
                               ) : c.thirdParty.length > 0 ? (
-                                <span className="text-xs text-muted">Third-party</span>
+                                <span className="text-xs text-muted">{t.components.thirdParty}</span>
                               ) : (
                                 <span className="text-faint">—</span>
                               )}
@@ -83,7 +86,7 @@ export default function ComponentsPage() {
                           );
                         })}
                         <td className="px-4 py-3 text-muted">
-                          {used > 0 ? `${used} system${used === 1 ? "" : "s"}` : "—"}
+                          {used > 0 ? t.components.systemsCount(used) : "—"}
                         </td>
                       </tr>
                     );

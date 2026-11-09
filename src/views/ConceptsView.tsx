@@ -1,28 +1,31 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/i18n/client";
 import { conceptFamilies } from "@/types/schema";
-import { conceptFamilyLabels, concepts, systemsUsingConcept } from "@/content";
+import { getContent } from "@/content";
 import { FamilyIcon } from "@/lib/identity";
+import type { Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/messages";
 
-export const metadata: Metadata = {
-  title: "Concepts · System Design Explainer",
-  description: "The recurring ideas behind large systems: caching, sharding, fan-out, idempotency, sagas and more.",
-};
+export function conceptsMetadata(locale: Locale): Metadata {
+  const t = getMessages(locale);
+  return { title: t.concepts.metaTitle, description: t.concepts.metaDescription };
+}
 
-export default function ConceptsPage() {
+export default function ConceptsView({ locale }: { locale: Locale }) {
+  const t = getMessages(locale);
+  const { conceptFamilyLabels, concepts, systemsUsingConcept } = getContent(locale);
   const groups = conceptFamilies
     .map((family) => ({ family, items: concepts.filter((c) => c.family === family) }))
     .filter((g) => g.items.length > 0);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
-      <h1 className="text-3xl font-semibold tracking-tight text-fg md:text-4xl">Concepts</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg md:text-4xl">{t.concepts.title}</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        The same handful of ideas appear again and again across the designs. Each page explains one with a
-        diagram you can step through — and links to the systems that rely on it.
+        {t.concepts.intro}
       </p>
 
-      <nav aria-label="Concept families" className="mt-6 flex flex-wrap gap-2">
+      <nav aria-label={t.concepts.families} className="mt-6 flex flex-wrap gap-2">
         {groups.map(({ family, items }) => (
           <a
             key={family}
@@ -61,10 +64,10 @@ export default function ConceptsPage() {
                       <p className="mt-1 flex-1 text-sm leading-relaxed text-muted">{concept.summary}</p>
                       <p className="mt-3 flex items-center gap-2 text-xs text-muted">
                         {concept.visual && (
-                          <span className="rounded-full bg-cat-tint px-2 py-0.5 font-medium text-fg">Interactive</span>
+                          <span className="rounded-full bg-cat-tint px-2 py-0.5 font-medium text-fg">{t.concepts.interactive}</span>
                         )}
                         <span className="truncate">
-                          {usedIn.length > 0 ? `Seen in ${usedIn.map((s) => s.name).join(", ")}` : "Reference"}
+                          {usedIn.length > 0 ? t.concepts.seenInList(usedIn.map((s) => s.name).join(", ")) : t.concepts.reference}
                         </span>
                       </p>
                     </Link>

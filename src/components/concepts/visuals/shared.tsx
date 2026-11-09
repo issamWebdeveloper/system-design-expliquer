@@ -1,3 +1,11 @@
+import { useLocale } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
+
+/** Picks a visual's text for the current language (each visual keeps its own small copy deck). */
+export function useCopy<T>(copy: Record<Locale, T>): T {
+  return copy[useLocale()];
+}
+
 /** Frame shared by every interactive concept visual. */
 export function VisualFrame({
   title,

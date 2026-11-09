@@ -1,0 +1,100 @@
+import type { SystemTranslation } from "../../translation";
+import { apis, bottlenecks, dataModel, edges, estimates, flows, nodes } from "../helpers";
+
+export const porter: SystemTranslation = {
+  name: "Porter / livraison de marchandises",
+  tagline: "Réserver un camion ou un deux-roues pour transporter des marchandises en ville",
+  description:
+    "Comme le VTC, mais pour des marchandises. Le client choisit un type de véhicule (deux-roues, mini-camion, camion), les points d'enlèvement et de livraison, et obtient un tarif à l'avance. Le dispatch cherche dans un index géographique les chauffeurs disponibles proches avec ce type de véhicule et leur propose la course. Les trajets incluent le temps de chargement, plusieurs arrêts et une preuve de livraison, et les clients professionnels peuvent planifier des commandes en masse.",
+  requirements: {
+    functional: [
+      "Choisir le type de véhicule, l'enlèvement et un ou plusieurs points de livraison ; voir le tarif",
+      "Trouver un chauffeur proche avec ce type de véhicule",
+      "Suivi en direct, preuve de livraison (photo/OTP)",
+      "Commandes planifiées et en masse pour les entreprises",
+      "Paiements, factures et versements aux chauffeurs",
+    ],
+    nonFunctional: [
+      "Trouver un chauffeur en moins d'une minute dans les villes animées",
+      "Tarifs exacts incluant attente et chargement",
+      "Jamais deux courses attribuées au même chauffeur",
+    ],
+  },
+  apis: apis(
+    "{ vehicleType, stops[] } → tarif et délai",
+    "Créer une commande (Idempotency-Key)",
+    "Mises à jour GPS en entrée, offres de course en sortie",
+    "Preuve de livraison (photo, OTP)",
+    "Suivi en direct pour le client",
+  ),
+  estimates: estimates(
+    ["Commandes", "≈ 500 k/jour", "Hypothèse ; ~6/s en moyenne, ~30/s en pointe"],
+    ["Chauffeurs en ligne", "≈ 100 k", "Hypothèse"],
+    ["Mises à jour GPS", "≈ 25 k/s", "100 k chauffeurs ÷ un ping toutes les 4 s"],
+    ["Photos de preuve", "≈ 250 Go/jour", "500 k × ~500 Ko"],
+  ),
+  dataModel: dataModel(
+    ["Commande", "Base relationnelle, shardée par ville", "Cycle de vie à plusieurs arrêts avec de l'argent en jeu"],
+    ["Position du chauffeur", "Index géographique en mémoire", "Chauffeur libre le plus proche pour un type de véhicule donné"],
+    ["Preuve de livraison", "Stockage objet", "Éléments de preuve en cas de litige"],
+  ),
+  nodes: nodes({
+    customer: ["Appli client", "Réserver, suivre, payer"],
+    business: ["Portail entreprise", "Commandes planifiées et en masse"],
+    driver: ["Appli chauffeur", "GPS, offres, navigation, preuve de livraison"],
+    gateway: ["Passerelle d'API", "Authentification, routage"],
+    pricing: ["Tarification", "Tarif selon le véhicule, la distance, le temps et la demande"],
+    maps: ["Cartes et itinéraires", "Distance, délai, itinéraires à plusieurs arrêts"],
+    "order-svc": ["Service de commande", "Cycle de vie de la commande"],
+    dispatch: ["Dispatch", "Trouve et verrouille un chauffeur, envoie l'offre"],
+    rt: ["Passerelle temps réel", "GPS et offres des chauffeurs, suivi client"],
+    "geo-index": ["Index géographique des chauffeurs", "Chauffeurs libres par type de véhicule et cellule"],
+    "order-db": ["Commandes", "Commandes par ville"],
+    "pod-store": ["Preuves de livraison", "Photos et signatures"],
+    "payment-svc": ["Paiements et versements", "Débits, factures, versements aux chauffeurs"],
+    psp: ["Prestataire de paiement", "UPI, cartes, portefeuilles"],
+    events: ["Événements de commande", "Changements de statut"],
+    notify: ["Push et SMS", "Infos chauffeur, OTP de livraison"],
+  }),
+  edges: edges({
+    "gateway-pricing": "Devis",
+    "dispatch-geo": "Proches + verrou",
+    "dispatch-rt": "Offre",
+    "driver-rt": "GPS",
+    "customer-rt": "Suivre",
+    "driver-pod": "Photo de preuve",
+    "events-payment": "Livrée",
+  }),
+  flows: flows({
+    book: [
+      "Transporter des marchandises",
+      "Le client saisit l'enlèvement et la livraison et choisit un mini-camion.",
+      "La tarification propose un prix.",
+      "À partir de la distance du trajet, du temps prévu et de la demande actuelle.",
+      "Le client confirme.",
+      "La commande est enregistrée.",
+      "Le dispatch cherche un chauffeur.",
+      "Les mini-camions libres près de l'enlèvement sont trouvés et le meilleur est verrouillé.",
+      "L'offre est poussée au chauffeur, qui accepte.",
+      "Le client suit le camion en direct.",
+      "À chaque livraison, le chauffeur enregistre une photo ou un OTP.",
+      "« Livrée » est publié.",
+      "Le paiement est réglé et les revenus du chauffeur enregistrés.",
+    ],
+  }),
+  bottlenecks: bottlenecks(
+    ["Peu de chauffeurs d'un type de véhicule rare à proximité", "Élargir le rayon de recherche par anneaux et permettre d'attribuer les commandes planifiées à l'avance."],
+    ["Litiges sur le temps d'attente et de chargement", "Horodater chaque événement d'arrêt et conserver la preuve de livraison."],
+    ["Des commandes professionnelles en masse qui arrivent d'un coup", "Les mettre en file et les dispatcher par lots avec optimisation des itinéraires."],
+  ),
+  scaling: [
+    "Partitionner par ville.",
+    "Index géographique en mémoire par type de véhicule, shardé par cellule.",
+    "Traitement après livraison piloté par les événements.",
+  ],
+  extensions: [
+    "Déménagement avec inventaire des objets.",
+    "Assurance des marchandises en transit.",
+    "Optimisation des itinéraires pour les livraisons professionnelles à plusieurs arrêts.",
+  ],
+};

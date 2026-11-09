@@ -1,4 +1,6 @@
 import type { Provider } from "@/types/schema";
+import type { Locale } from "@/i18n/config";
+import { messages } from "@/i18n/messages";
 
 export interface ProviderMeta {
   id: Provider;
@@ -16,6 +18,15 @@ export const providers: ProviderMeta[] = [
   { id: "oss", name: "Open source / self-hosted", shortName: "Open source", accent: "var(--provider-oss)" },
 ];
 
-export function getProvider(id: Provider): ProviderMeta {
-  return providers.find((p) => p.id === id) ?? providers[0];
+/** Providers with their generic and open-source names in the given language (cloud brands stay as is). */
+export function getProviders(locale: Locale): ProviderMeta[] {
+  const t = messages[locale].providers;
+  return providers.map((p) =>
+    p.id === "generic" || p.id === "oss" ? { ...p, name: t[p.id].name, shortName: t[p.id].short } : p,
+  );
+}
+
+export function getProvider(id: Provider, locale: Locale = "en"): ProviderMeta {
+  const list = getProviders(locale);
+  return list.find((p) => p.id === id) ?? list[0];
 }

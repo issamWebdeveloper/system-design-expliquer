@@ -2,7 +2,7 @@
 
 import EmptyIllustration from "./EmptyIllustration";
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link, { useMessages } from "@/i18n/client";
 import { Search } from "lucide-react";
 import { SystemIcon } from "@/lib/identity";
 
@@ -34,12 +34,16 @@ interface Option {
 export default function SystemCatalogue({
   cards,
   categories,
+  difficulties,
   conceptOptions,
 }: {
   cards: CatalogueCard[];
   categories: Option[];
+  /** Difficulty levels "1"–"3" with their labels. */
+  difficulties: Option[];
   conceptOptions: Option[];
 }) {
+  const t = useMessages();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
@@ -66,30 +70,26 @@ export default function SystemCatalogue({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter systems…"
+            placeholder={t.catalogue.filterPlaceholder}
             className="h-9 w-44 bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
           />
         </label>
 
-        <ChipGroup options={categories} value={category} onChange={setCategory} allLabel="All categories" categoryDots />
+        <ChipGroup options={categories} value={category} onChange={setCategory} allLabel={t.catalogue.allCategories} categoryDots />
         <ChipGroup
-          options={[
-            { value: "1", label: "Beginner" },
-            { value: "2", label: "Intermediate" },
-            { value: "3", label: "Advanced" },
-          ]}
+          options={difficulties}
           value={difficulty ? String(difficulty) : null}
           onChange={(v) => setDifficulty(v ? Number(v) : null)}
-          allLabel="Any level"
+          allLabel={t.catalogue.anyLevel}
         />
 
         <select
           value={concept}
           onChange={(e) => setConcept(e.target.value)}
-          aria-label="Filter by concept"
+          aria-label={t.catalogue.filterByConcept}
           className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg-soft focus:outline-none"
         >
-          <option value="">Any concept</option>
+          <option value="">{t.catalogue.anyConcept}</option>
           {conceptOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -108,13 +108,13 @@ export default function SystemCatalogue({
             }}
             className="text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
           >
-            Clear filters
+            {t.catalogue.clearFilters}
           </button>
         )}
       </div>
 
       <p className="mt-4 text-xs text-muted">
-        {visible.length} of {cards.length} systems
+        {t.catalogue.count(visible.length, cards.length)}
       </p>
 
       <ul className="mt-3 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -158,7 +158,7 @@ export default function SystemCatalogue({
                     {card.difficultyLabel}
                   </span>
                   <span className="text-muted">
-                    {card.componentCount} components · {card.flowCount} walkthroughs
+                    {t.catalogue.cardStats(card.componentCount, card.flowCount)}
                   </span>
                 </div>
               </div>
@@ -170,7 +170,7 @@ export default function SystemCatalogue({
       {visible.length === 0 && (
         <div className="mt-10 flex flex-col items-center gap-3 text-center">
           <EmptyIllustration />
-          <p className="text-sm text-muted">No systems match these filters.</p>
+          <p className="text-sm text-muted">{t.catalogue.empty}</p>
         </div>
       )}
     </>

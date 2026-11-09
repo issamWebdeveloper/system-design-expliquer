@@ -4,10 +4,12 @@ import { memo } from "react";
 import type { NodeProps } from "@xyflow/react";
 import type { TierNodeData } from "@/lib/transformDiagram";
 import { tierHues, type TierId } from "@/lib/layout";
+import { useMessages } from "@/i18n/client";
 
 /** A horizontal swimlane behind one tier of components. */
 function TierNodeComponent({ data }: NodeProps) {
-  const { label, tier } = data as TierNodeData;
+  const { tier } = data as TierNodeData;
+  const label = useMessages().diagram.tiers[tier as TierId] ?? tier;
   const hue = tierHues[tier as TierId] ?? "#64748b";
 
   return (

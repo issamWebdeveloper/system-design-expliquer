@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { searchItems, type SearchItem } from "@/lib/search-match";
+import { useMessages } from "@/i18n/client";
 
 const typeColors: Record<SearchItem["type"], string> = {
   System: "text-indigo-300 bg-indigo-500/10",
@@ -22,6 +23,7 @@ export default function SearchPalette({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const t = useMessages();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -54,7 +56,7 @@ export default function SearchPalette({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search"
+        aria-label={t.search.dialog}
         className="w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl"
       >
         <div className="flex items-center gap-3 border-b border-line px-4">
@@ -76,7 +78,7 @@ export default function SearchPalette({
                 setActive((i) => Math.max(i - 1, 0));
               } else if (e.key === "Enter") go(results[active]);
             }}
-            placeholder="Search systems, components, services, concepts…"
+            placeholder={t.search.placeholder}
             className="h-12 w-full bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
           />
           <kbd className="rounded border border-line-strong px-1.5 py-0.5 text-[10px] text-muted">Esc</kbd>
@@ -87,7 +89,7 @@ export default function SearchPalette({
             {results.length === 0 && (
               <li className="flex flex-col items-center gap-2 px-4 py-6 text-center text-sm text-muted">
                 <EmptyIllustration className="h-14 w-24" />
-                No matches for “{query}”
+                {t.search.noMatches(query)}
               </li>
             )}
             {results.map((item, i) => (
@@ -101,7 +103,7 @@ export default function SearchPalette({
                   <span
                     className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${typeColors[item.type]}`}
                   >
-                    {item.type}
+                    {t.search.types[item.type]}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-fg">{item.title}</span>

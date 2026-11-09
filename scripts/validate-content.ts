@@ -3,6 +3,8 @@ import { components, concepts, systems } from "../src/content";
 import { validateContent } from "../src/lib/validate";
 import { conceptDiagrams } from "../src/content/conceptDiagrams";
 import { systemIcons } from "../src/lib/identity";
+import { validateTranslation } from "../src/lib/validateTranslation";
+import { fr } from "../src/content/fr";
 
 const problems = validateContent(components, systems, concepts);
 for (const s of systems) {
@@ -11,6 +13,9 @@ for (const s of systems) {
 for (const slug of Object.keys(conceptDiagrams)) {
   if (!concepts.some((c) => c.slug === slug)) problems.push(`conceptDiagrams has an entry for unknown concept "${slug}"`);
 }
+
+const french = validateTranslation("fr", fr, { components, concepts, systems });
+problems.push(...french.problems);
 
 if (problems.length > 0) {
   console.error(`Content validation failed (${problems.length}):`);
@@ -21,3 +26,4 @@ if (problems.length > 0) {
 console.log(
   `Content OK: ${components.length} component kinds, ${systems.length} systems, ${concepts.length} concepts.`,
 );
+console.log(`Translations: ${french.coverage}`);

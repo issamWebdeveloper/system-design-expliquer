@@ -1,0 +1,128 @@
+import type { SystemTranslation } from "../../translation";
+import { apis, bottlenecks, dataModel, edges, estimates, flows, nodes } from "../helpers";
+
+export const whatsapp: SystemTranslation = {
+  tagline: "Des milliards de messages en temps réel par jour",
+  description:
+    "Chaque téléphone garde une connexion WebSocket persistante vers un serveur de chat. Un registre des sessions note à quel serveur chaque utilisateur est connecté : un message peut ainsi être stocké, routé vers le serveur du destinataire via un bus interne et poussé sur sa socket en quelques millisecondes. Si le destinataire est hors ligne, le message attend dans le stockage et une notification push réveille son téléphone.",
+  requirements: {
+    functional: [
+      "Conversations individuelles et de groupe avec livraison instantanée",
+      "Historique persistant, synchronisé entre les appareils d'un utilisateur",
+      "Accusés d'envoi, de réception et de lecture ; indicateur de saisie ; présence en ligne / vu à",
+      "Envoyer photos, vidéos, messages vocaux et documents",
+      "Notifications push quand l'application est fermée",
+    ],
+    nonFunctional: [
+      "Livraison en moins d'une seconde entre utilisateurs en ligne",
+      "Aucun message n'est perdu dès que l'expéditeur voit une coche",
+      "Les messages apparaissent dans le même ordre pour tous les membres d'une conversation",
+      "Des millions de connexions simultanées et des milliards de messages par jour",
+      "Chiffrement de bout en bout : les serveurs ne relaient que du texte chiffré",
+    ],
+  },
+  apis: apis(
+    "Envoie un message sur la connexion ouverte ; clientMsgId rend les nouvelles tentatives idempotentes",
+    "Le serveur pousse nouveaux messages, accusés de réception, de lecture et changements de présence",
+    "Liste des conversations avec leur dernier message",
+    "Charge l'historique plus ancien en remontant",
+    "Crée un groupe et ajoute des membres",
+    "Obtient une URL pré-signée pour envoyer une pièce jointe",
+  ),
+  estimates: estimates(
+    ["Utilisateurs actifs par jour", "≈ 100 M", "Hypothèse : 10 % de ~1 Md d'inscrits"],
+    ["Messages", "≈ 2 Md/jour (~23 k/s)", "100 M utilisateurs × 20 messages ÷ 86 400 s ; pointes 3–5×"],
+    ["Stockage des messages", "≈ 1 To/jour", "2 Md × ~500 octets métadonnées comprises, avant réplication ×3"],
+    ["Connexions simultanées", "≈ 10 M", "En ligne en pointe ; ~50 k sockets par serveur → ~200 serveurs de chat"],
+    ["Bande passante texte", "≈ 12 Mo/s", "23 k msg/s × 500 octets ; les médias passent par le stockage et le CDN"],
+  ),
+  dataModel: dataModel(
+    ["Message", "Base orientée colonnes larges (ex. Cassandra)", "Ajout seul, partitionné par conversation : l'historique est un seul parcours de plage"],
+    ["Statut de livraison", "Base orientée colonnes larges", "Accusés par destinataire, surtout dans les groupes"],
+    ["Conversation / appartenance", "Base relationnelle", "Petit, relationnel, nécessite des contrôles d'appartenance cohérents"],
+    ["Session", "Cache en mémoire", "Consultée à chaque message pour savoir où livrer ; expire à la déconnexion"],
+    ["Utilisateur", "Base relationnelle", "Données de compte et clés de chiffrement"],
+  ),
+  nodes: nodes({
+    mobile: ["Appli mobile", "Garde une socket ouverte, chiffre les messages de bout en bout"],
+    web: ["Web / ordinateur", "Appareil lié qui se synchronise avec le téléphone"],
+    "chat-lb": ["Répartiteur des connexions", "Répartit les connexions WebSocket de longue durée (L4)"],
+    "api-lb": ["Répartiteur d'API", "Route les requêtes HTTPS pour l'historique, les groupes et les médias"],
+    "chat-gw": ["Serveurs de chat", "Tiennent les connexions ; reçoivent, stockent et poussent les messages"],
+    "api-svc": ["Service d'API", "Connexion, liste des conversations, historique, groupes"],
+    "notify-svc": ["Notificateur hors ligne", "Envoie un push quand le destinataire n'est pas connecté"],
+    bus: ["Bus de messages", "Route les messages entre serveurs de chat"],
+    sessions: ["Registre des sessions", "userId → serveur de chat, plus la présence"],
+    "message-db": ["Stockage des messages", "Tous les messages, partitionnés par conversation"],
+    "user-db": ["Utilisateurs et groupes", "Comptes, conversations et appartenances"],
+    "media-store": ["Stockage média", "Pièces jointes chiffrées"],
+    cdn: ["CDN média", "Téléchargements des pièces jointes populaires"],
+    push: ["Notifications push", "Réveils via APNs / FCM"],
+  }),
+  edges: edges({
+    "mobile-chat": "WebSocket",
+    "mobile-api": "HTTPS",
+    "gw-sessions": "Trouver le destinataire",
+    "gw-store": "Persister",
+    "gw-bus": "Router",
+    "bus-gw": "Livrer",
+    "bus-notify": "Hors ligne",
+    "api-history": "Historique",
+    "mobile-upload": "Import (pré-signé)",
+    "mobile-cdn": "Téléchargement",
+  }),
+  flows: flows({
+    online: [
+      "Message à un ami en ligne",
+      "L'appli d'Alice envoie le message chiffré sur sa socket ouverte, marqué d'un id de message client.",
+      "Il arrive au serveur de chat qui tient la connexion d'Alice.",
+      "Le serveur le stocke ; Alice voit maintenant une coche (envoyé).",
+      "Il cherche à quel serveur de chat Bob est connecté.",
+      "Le message est publié pour le serveur de Bob.",
+      "Le serveur de Bob le pousse sur sa socket. Son appli accuse réception, et Alice voit deux coches (distribué).",
+    ],
+    offline: [
+      "Message à un ami hors ligne",
+      "Alice envoie un message pendant que le téléphone de Bob est en veille.",
+      "Il atteint le serveur de chat qui tient la connexion d'Alice.",
+      "Il est stocké durablement : rien n'est perdu.",
+      "Le registre indique que Bob n'a pas de connexion active.",
+      "Le message est routé comme une livraison hors ligne.",
+      "Le notificateur hors ligne le récupère.",
+      "Une notification push réveille le téléphone de Bob.",
+      "L'appli de Bob se reconnecte et demande ce qu'elle a manqué.",
+      "Les messages manqués sont lus dans le stockage, du plus récent au plus ancien, et les accusés repartent vers Alice.",
+    ],
+  }),
+  bottlenecks: bottlenecks(
+    [
+      "Chaque serveur de chat ne peut tenir qu'un nombre limité de sockets ouvertes",
+      "Faire tourner des centaines de serveurs en E/S asynchrones derrière un répartiteur L4 ; vider les connexions progressivement lors des déploiements pour éviter les tempêtes de reconnexions.",
+    ],
+    [
+      "Le registre des sessions est sollicité à chaque message",
+      "Le sharder par userId avec du hachage cohérent, le garder en mémoire et mettre en cache les recherches récentes sur chaque serveur de chat.",
+    ],
+    [
+      "Des milliards d'écritures par jour",
+      "Base optimisée pour l'écriture, partitionnée par conversation ; écritures par lots ; ajouter des nœuds quand le volume croît.",
+    ],
+    [
+      "Les grands groupes multiplient chaque message",
+      "Stocker chaque message de groupe une seule fois et ne diffuser que les notifications de livraison ; plafonner la taille des groupes.",
+    ],
+  ),
+  scaling: [
+    "Sharder les messages par conversationId et les utilisateurs par userId.",
+    "Répliquer le stockage des messages (facteur 3) entre zones ; n'importe quel nœud peut tomber sans perte.",
+    "Diriger les utilisateurs vers la région la plus proche par géo-DNS ; transférer les messages inter-régions via le bus.",
+    "Garder les serveurs d'API sans état ; seuls les serveurs de chat tiennent un état de connexion, reconstruit à la reconnexion.",
+    "Envoyer les médias via le stockage objet et le CDN pour que les serveurs de chat ne transportent que de petits textes.",
+  ],
+  extensions: [
+    "Chiffrement de bout en bout avec des clés par appareil (protocole Signal).",
+    "Appels audio et vidéo en WebRTC avec relais TURN.",
+    "Recherche des messages sur l'appareil (les serveurs ne peuvent pas lire le contenu).",
+    "Messages éphémères avec un TTL sur le stockage.",
+  ],
+};

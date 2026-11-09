@@ -9,7 +9,14 @@ export interface SearchItem {
   keywords: string;
 }
 
-const toWords = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+/** Lower-cases and strips accents, so "reseau" finds "réseau". */
+const toWords = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
 const hasWordStartingWith = (words: string[], prefix: string) => words.some((w) => w.startsWith(prefix));
 
 /** Every query word must start some word in the item; title matches rank highest. */

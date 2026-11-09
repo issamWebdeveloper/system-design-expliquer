@@ -4,18 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
 import type { Provider, SystemDesign } from "@/types/schema";
 import type { FlowHighlight } from "@/lib/transformDiagram";
+import { useMessages } from "@/i18n/client";
 
-const cycle: { id: Provider; label: string }[] = [
-  { id: "generic", label: "Generic" },
+const cycle: { id: Provider; label?: string }[] = [
+  { id: "generic" },
   { id: "aws", label: "AWS" },
   { id: "gcp", label: "Google Cloud" },
   { id: "azure", label: "Azure" },
-  { id: "oss", label: "Open source" },
+  { id: "oss" },
 ];
 const TICK_MS = 2200;
 
 /** Landing-page preview: a real diagram that cycles clouds while a walkthrough plays. */
 export default function HeroDiagram({ system }: { system: SystemDesign }) {
+  const t = useMessages();
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -44,7 +46,11 @@ export default function HeroDiagram({ system }: { system: SystemDesign }) {
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border border-line bg-surface/90 px-3 py-1 text-xs backdrop-blur">
         <span className="h-2 w-2 rounded-full" style={{ background: `var(--provider-${provider.id})` }} aria-hidden />
         <span className="font-medium text-fg">{system.name}</span>
-        <span className="text-muted">on {provider.label}</span>
+        <span className="text-muted">
+          {t.home.heroOn(
+            provider.label ?? (provider.id === "oss" ? t.providers.oss.short : t.providers.generic.short),
+          )}
+        </span>
       </div>
       <ArchitectureDiagram
         system={system}

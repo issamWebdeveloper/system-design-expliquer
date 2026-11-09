@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useMessages } from "@/i18n/client";
 import { Check } from "lucide-react";
 import { useVisitedSystems } from "@/lib/visited";
 
@@ -13,6 +13,7 @@ export interface LearningPath {
 }
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
+  const t = useMessages();
   const r = 15;
   const circumference = 2 * Math.PI * r;
   const offset = Math.round(circumference * (1 - done / total) * 100) / 100;
@@ -21,7 +22,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
       viewBox="0 0 36 36"
       className="h-10 w-10 -rotate-90"
       role="img"
-      aria-label={`${done} of ${total} visited`}
+      aria-label={t.home.visitedOf(done, total)}
     >
       <circle cx="18" cy="18" r={r} fill="none" stroke="var(--line)" strokeWidth="3" />
       <circle
@@ -42,6 +43,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
 
 export default function LearningPaths({ paths }: { paths: LearningPath[] }) {
   const visited = useVisitedSystems();
+  const t = useMessages();
 
   return (
     <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -73,7 +75,7 @@ export default function LearningPaths({ paths }: { paths: LearningPath[] }) {
                             : "bg-surface-2 text-muted group-hover:bg-cat-tint group-hover:text-fg"
                         }`}
                       >
-                        {seen ? <Check size={13} aria-label="Visited" /> : i + 1}
+                        {seen ? <Check size={13} aria-label={t.home.visited} /> : i + 1}
                       </span>
                       <span className="text-fg-soft group-hover:text-fg">{s.name}</span>
                     </Link>

@@ -1,7 +1,40 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { VisualButton, VisualFrame, fnv1a, palette } from "./shared";
+import { VisualButton, VisualFrame, fnv1a, palette, useCopy } from "./shared";
+
+const copy = {
+  en: {
+    title: "Try it: change the cluster",
+    hint: "Keys (small dots) belong to the next server clockwise. Add or remove a server and see how few keys move.",
+    ring: "Hash ring",
+    node: "node",
+    removeD: "Remove server D",
+    addD: "Add server D",
+    failB: "Fail server B",
+    restoreB: "Restore server B",
+    moved: (n: number) => `of ${n} keys moved (outlined dots).`,
+    compare: "Change the cluster to compare with plain",
+    withPlain: "With plain",
+    remap: (n: number, pct: number) =>
+      `, going from 3 to ${n} servers would remap roughly ${pct}% of keys — every cache would go cold at once.`,
+  },
+  fr: {
+    title: "Essayez : modifiez le cluster",
+    hint: "Les clés (petits points) appartiennent au serveur suivant dans le sens horaire. Ajoutez ou retirez un serveur et voyez le peu de clés qui bougent.",
+    ring: "Anneau de hachage",
+    node: "nœud",
+    removeD: "Retirer le serveur D",
+    addD: "Ajouter le serveur D",
+    failB: "Panne du serveur B",
+    restoreB: "Rétablir le serveur B",
+    moved: (n: number) => `clés sur ${n} ont bougé (points cerclés).`,
+    compare: "Modifiez le cluster pour comparer avec un simple",
+    withPlain: "Avec un simple",
+    remap: (n: number, pct: number) =>
+      `, passer de 3 à ${n} serveurs déplacerait environ ${pct} % des clés — tous les caches se videraient d'un coup.`,
+  },
+};
 
 const KEYS = Array.from({ length: 16 }, (_, i) => `user:${i + 1}`);
 const ALL_NODES = ["A", "B", "C", "D"];
@@ -25,6 +58,7 @@ function owners(nodes: string[]) {
 }
 
 export default function HashRing() {
+  const t = useCopy(copy);
   const [nodes, setNodes] = useState(BASELINE);
   const baseline = useMemo(() => owners(BASELINE), []);
   const current = useMemo(() => owners(nodes), [nodes]);
@@ -39,11 +73,11 @@ export default function HashRing() {
 
   return (
     <VisualFrame
-      title="Try it: change the cluster"
-      hint="Keys (small dots) belong to the next server clockwise. Add or remove a server and see how few keys move."
+      title={t.title}
+      hint={t.hint}
     >
       <div className="flex flex-col items-center gap-4 md:flex-row md:items-start">
-        <svg viewBox="0 0 280 280" className="w-full max-w-[280px]" role="img" aria-label="Hash ring">
+        <svg viewBox="0 0 280 280" className="w-full max-w-[280px]" role="img" aria-label={t.ring}>
           <circle cx="140" cy="140" r={R} fill="none" stroke="var(--line-strong)" strokeWidth="2" />
           {KEYS.map((k) => {
             const p = point(keyAngle(k));
@@ -58,7 +92,7 @@ export default function HashRing() {
                 stroke={isMoved ? "var(--fg)" : "none"}
                 strokeWidth="2"
               >
-                <title>{`${k} → node ${current[k]}`}</title>
+                <title>{`${k} → ${t.node} ${current[k]}`}</title>
               </circle>
             );
           })}
@@ -79,24 +113,24 @@ export default function HashRing() {
         <div className="flex-1 space-y-3 text-sm">
           <div className="flex flex-wrap gap-2">
             <VisualButton primary={!nodes.includes("D")} onClick={() => setNodes(nodes.includes("D") ? nodes.filter((n) => n !== "D") : [...nodes, "D"])}>
-              {nodes.includes("D") ? "Remove server D" : "Add server D"}
+              {nodes.includes("D") ? t.removeD : t.addD}
             </VisualButton>
             <VisualButton onClick={() => setNodes(nodes.includes("B") ? nodes.filter((n) => n !== "B") : [...nodes, "B"].sort())}>
-              {nodes.includes("B") ? "Fail server B" : "Restore server B"}
+              {nodes.includes("B") ? t.failB : t.restoreB}
             </VisualButton>
           </div>
           <p className="text-fg-soft">
-            <span className="text-2xl font-semibold text-fg">{moved.length}</span> of {KEYS.length} keys moved
-            (outlined dots).
+            <span className="text-2xl font-semibold text-fg">{moved.length}</span> {t.moved(KEYS.length)}
           </p>
           <p className="text-muted">
             {nodes.length === BASELINE.length && nodes.every((n) => BASELINE.includes(n)) ? (
-              <>Change the cluster to compare with plain <code className="font-mono text-[12px]">hash mod N</code>.</>
+              <>
+                {t.compare} <code className="font-mono text-[12px]">hash mod N</code>.
+              </>
             ) : (
               <>
-                With plain <code className="font-mono text-[12px]">hash mod N</code>, going from 3 to {nodes.length} servers would
-                remap roughly {Math.round((1 - 1 / Math.max(nodes.length, BASELINE.length)) * 100)}% of keys — every cache would
-                go cold at once.
+                {t.withPlain} <code className="font-mono text-[12px]">hash mod N</code>
+                {t.remap(nodes.length, Math.round((1 - 1 / Math.max(nodes.length, BASELINE.length)) * 100))}
               </>
             )}
           </p>

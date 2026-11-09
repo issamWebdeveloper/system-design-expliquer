@@ -1,0 +1,105 @@
+import type { SystemTranslation } from "../../translation";
+import { apis, bottlenecks, dataModel, edges, estimates, flows, nodes } from "../helpers";
+
+export const bnpl: SystemTranslation = {
+  name: "Achetez maintenant, payez plus tard",
+  tagline: "Un crédit instantané au paiement, remboursé plus tard",
+  description:
+    "Au moment de payer chez un marchand, l'acheteur choisit « payer plus tard ». La plateforme prend une décision de crédit en une seconde environ — à l'aide de son propre modèle de risque, de la limite de l'utilisateur et, pour les nouveaux, d'une consultation du bureau de crédit — puis paie le marchand et enregistre un prêt dans un grand livre en partie double. Un planificateur encaisse les remboursements par prélèvement automatique, applique les pénalités de retard et transmet les comptes en souffrance au recouvrement.",
+  requirements: {
+    functional: [
+      "S'inscrire avec KYC et obtenir une limite de crédit",
+      "Payer plus tard chez les marchands partenaires en un clic",
+      "Décision de crédit instantanée ; paiement en plusieurs fois quand c'est proposé",
+      "Rembourser par prélèvement automatique ou manuellement ; pénalités de retard et rappels",
+      "Règlement des marchands et remboursements qui rétablissent la limite de l'utilisateur",
+    ],
+    nonFunctional: [
+      "Décision en moins d'environ 1 seconde au paiement",
+      "Mouvements d'argent exactement une fois et grand livre auditable",
+      "Conformité réglementaire (KYC, protection des données, règles de crédit)",
+      "Fraude contenue sans bloquer les bons clients",
+    ],
+  },
+  apis: apis(
+    "Le marchand demande : cet utilisateur peut-il payer plus tard ce montant ?",
+    "Confirmer l'achat (Idempotency-Key)",
+    "Remboursement marchand ; rétablit la limite",
+    "Montants dus, échéances et historique",
+    "Rembourser maintenant",
+  ),
+  estimates: estimates(
+    ["Utilisateurs", "≈ 10 M avec une limite", "Hypothèse"],
+    ["Paiements", "≈ 2 M/jour (~25/s, ~250/s en période de soldes)", "Hypothèse"],
+    ["Latence de décision", "< 1 s", "Ne doit pas ralentir le paiement chez le marchand"],
+    ["Écritures au grand livre", "≈ 10 M/jour", "Achat, versement au marchand, frais, remboursements"],
+  ),
+  dataModel: dataModel(
+    ["Ligne de crédit", "Base relationnelle", "La limite disponible change de façon atomique à chaque achat ou remboursement"],
+    ["Prêt / transaction", "Base relationnelle", "Cycle de vie de l'achat à la clôture"],
+    ["Écriture comptable", "Base relationnelle (ajout seul)", "Trace en partie double de chaque mouvement"],
+    ["Échéancier", "Base relationnelle", "Pilote prélèvements automatiques, rappels et pénalités de retard"],
+  ),
+  nodes: nodes({
+    checkout: ["Paiement chez le marchand", "Propose « payer plus tard » via le SDK de la plateforme"],
+    app: ["Appli utilisateur", "Limites, relevés, remboursements"],
+    gateway: ["Passerelle d'API", "Authentification marchands et utilisateurs, limites de débit"],
+    identity: ["KYC et identité", "Inscription, connexion par OTP, vérification des documents"],
+    "decision-svc": ["Décision de crédit", "Éligibilité et approbation au paiement"],
+    risk: ["Modèles de risque et de fraude", "Évaluent utilisateurs et transactions"],
+    bureau: ["Bureau de crédit", "Historique de crédit des nouveaux utilisateurs"],
+    "credit-svc": ["Crédit et prêts", "Limites, prêts, remboursements marchands"],
+    ledger: ["Grand livre et lignes de crédit", "Grand livre en partie double et limites"],
+    scheduler: ["Planificateur des remboursements", "Échéances, prélèvement automatique, nouvelles tentatives, pénalités"],
+    "payment-svc": ["Paiements", "Règlement des marchands, prélèvements, recouvrement"],
+    psp: ["Banques et réseaux de paiement", "Mandats, prélèvement UPI, versements"],
+    events: ["Événements de crédit", "Achats, remboursements, défauts"],
+    notify: ["SMS et push", "Rappels d'échéance, reçus"],
+    warehouse: ["Analytique du risque", "Données du portefeuille et d'entraînement des modèles"],
+  }),
+  edges: edges({
+    "checkout-gateway": "Éligibilité / confirmation",
+    "decision-risk": "Score",
+    "decision-bureau": "Nouveaux utilisateurs",
+    "decision-credit": "Réserver la limite",
+    "events-payment": "Régler le marchand",
+    "events-scheduler": "Créer l'échéancier",
+    "scheduler-payment": "Prélèvement automatique",
+    "scheduler-notify": "Rappels",
+  }),
+  flows: flows({
+    purchase: [
+      "Payer plus tard au moment de l'achat",
+      "L'acheteur choisit « payer plus tard » pour 4 000 ₹ ; le marchand demande l'éligibilité.",
+      "Le service de décision de crédit évalue la demande.",
+      "Le modèle de risque évalue l'utilisateur, l'appareil et le panier en quelques millisecondes.",
+      "4 000 ₹ sont réservés sur la limite disponible de l'utilisateur par une mise à jour conditionnelle.",
+      "À la confirmation, le prêt est comptabilisé : débit de la créance sur l'utilisateur, crédit de la dette envers le marchand.",
+      "Un événement « achat » est publié.",
+      "Le marchand est réglé (net des frais) au prochain cycle de versement.",
+      "Un échéancier de remboursement est créé.",
+    ],
+    repay: [
+      "Échéance de remboursement",
+      "Des rappels partent avant l'échéance.",
+      "Le jour de l'échéance, le planificateur déclenche un prélèvement automatique.",
+      "Le mandat bancaire est débité.",
+      "Le remboursement est comptabilisé et la limite de l'utilisateur rétablie. Les prélèvements échoués sont retentés, puis des pénalités s'appliquent.",
+    ],
+  }),
+  bottlenecks: bottlenecks(
+    ["Latence au paiement", "Limites pré-approuvées et caractéristiques de risque en cache pour que la plupart des décisions évitent les appels externes."],
+    ["Des achats simultanés qui dépassent une limite", "Mise à jour conditionnelle de la limite disponible avec contrôle de version."],
+    ["Prélèvements automatiques échoués", "Nouvelles tentatives intelligentes autour du jour de paie, mandats multiples et rappels anticipés."],
+  ),
+  scaling: [
+    "Sharder lignes de crédit et grand livre par userId.",
+    "Garder le chemin de décision sans état, avec des caractéristiques précalculées dans un feature store.",
+    "Utiliser le flux d'événements pour que règlement, échéanciers et analytique montent en charge séparément.",
+  ],
+  extensions: [
+    "Conversion des gros achats en mensualités.",
+    "Hausse de la limite de crédit selon l'historique de remboursement.",
+    "Co-financement avec des banques partenaires.",
+  ],
+};

@@ -1,0 +1,106 @@
+import type { SystemTranslation } from "../../translation";
+import { apis, bottlenecks, dataModel, edges, estimates, flows, nodes } from "../helpers";
+
+export const practo: SystemTranslation = {
+  name: "Practo / téléconsultation",
+  tagline: "Trouver un médecin, prendre rendez-vous, consulter en vidéo",
+  description:
+    "Les patients cherchent des médecins par spécialité et par lieu, puis réservent un créneau dans l'agenda du médecin avec une courte retenue pendant le paiement. À l'heure du rendez-vous, les deux rejoignent un appel vidéo établi par la signalisation WebRTC, avec des relais TURN pour les réseaux difficiles. Ordonnances et comptes rendus sont stockés comme des dossiers de santé chiffrés, accessibles uniquement au patient et à ses médecins.",
+  requirements: {
+    functional: [
+      "Chercher des médecins par spécialité, lieu, langue, tarif et note",
+      "Réserver des consultations en cabinet ou en vidéo parmi les créneaux disponibles",
+      "Consultations en vidéo, audio et par messagerie",
+      "Ordonnances électroniques et dossiers médicaux partagés avec le patient",
+      "Paiements, rappels et suivis",
+    ],
+    nonFunctional: [
+      "Données de santé chiffrées et à accès contrôlé (conformité de type HIPAA)",
+      "Aucun créneau réservé deux fois",
+      "Les appels fonctionnent sur réseau mobile avec une faible latence",
+      "Chaque accès aux dossiers est audité",
+    ],
+  },
+  apis: apis(
+    "Médecins avec leurs prochains créneaux disponibles",
+    "Réserver un créneau (retenu pendant le paiement)",
+    "Signalisation WebRTC pour l'appel",
+    "Le médecin émet une ordonnance électronique",
+    "Dossiers et ordonnances du patient",
+  ),
+  estimates: estimates(
+    ["Consultations", "≈ 100 k/jour", "Hypothèse ; vidéo et cabinet confondus"],
+    ["Appels simultanés en pointe", "≈ 5 k", "Pic du soir, ~15 minutes chacun"],
+    ["Médecins", "≈ 100 k référencés", "Hypothèse"],
+    ["Dossiers", "≈ 50 Go/jour", "Ordonnances et comptes rendus envoyés"],
+  ),
+  dataModel: dataModel(
+    ["Créneau du médecin", "Base relationnelle", "Une réservation conditionnelle empêche la double réservation"],
+    ["Rendez-vous", "Base relationnelle", "Cycle de vie et paiement"],
+    ["Dossier de santé", "Stockage objet chiffré + base de métadonnées", "Sensible ; clés et listes d'accès par dossier"],
+  ),
+  nodes: nodes({
+    patient: ["Appli patient", "Chercher, réserver, consulter, voir ses dossiers"],
+    doctor: ["Appli médecin", "Agenda, consultations, ordonnances"],
+    gateway: ["Passerelle d'API", "Authentification, rôles, journal d'audit"],
+    identity: ["Identité", "Comptes patients et médecins vérifiés"],
+    "search-svc": ["Recherche de médecins", "Spécialité, lieu et disponibilité"],
+    "doctor-index": ["Index des médecins", "Médecins, cabinets et prochain créneau libre"],
+    "booking-svc": ["Service de rendez-vous", "Créneaux, retenues et réservations"],
+    "slot-holds": ["Retenues de créneaux", "Retenues de courte durée pendant le paiement"],
+    "main-db": ["Rendez-vous et créneaux", "Source de vérité"],
+    "payment-svc": ["Service de paiement", "Honoraires de consultation et remboursements"],
+    psp: ["Prestataire de paiement", "UPI, cartes"],
+    signal: ["Signalisation et messagerie", "Signalisation WebRTC et discussion pendant l'appel"],
+    media: ["Serveurs TURN / média", "Relaient les appels sur les réseaux restrictifs"],
+    "records-svc": ["Service des dossiers", "Ordonnances et comptes rendus avec contrôle d'accès"],
+    records: ["Dossiers chiffrés", "Documents de santé"],
+    kms: ["Gestion des clés", "Clés de chiffrement des dossiers"],
+    notify: ["Rappels", "Rappels par SMS et push"],
+  }),
+  edges: edges({
+    "gateway-identity": "Vérifier le jeton",
+    "booking-holds": "Retenir le créneau",
+    "booking-db": "Confirmer",
+    "patient-media": "Vidéo",
+    "records-kms": "Chiffrer / déchiffrer",
+  }),
+  flows: flows({
+    book: [
+      "Réserver une téléconsultation",
+      "Le patient cherche un dermatologue disponible aujourd'hui en vidéo.",
+      "La recherche filtre par spécialité, langue et mode.",
+      "Les résultats incluent le prochain créneau libre de chaque médecin.",
+      "Le patient choisit 18 h 30.",
+      "Le créneau est retenu quelques minutes.",
+      "Les honoraires sont payés.",
+      "Le prestataire de paiement accepte.",
+      "Le créneau est réservé par une mise à jour conditionnelle.",
+      "Les deux reçoivent confirmations et rappels.",
+    ],
+    consult: [
+      "Consultation",
+      "À 18 h 30, le patient se connecte ; la signalisation échange les offres WebRTC.",
+      "Le médecin rejoint depuis son tableau de bord.",
+      "La vidéo passe en pair à pair ou via un relais TURN.",
+      "Après l'appel, le médecin émet une ordonnance.",
+      "Elle est chiffrée avec une clé fournie par la gestion des clés…",
+      "…et stockée ; seuls le patient et les médecins autorisés peuvent la lire, et chaque lecture est journalisée.",
+    ],
+  }),
+  bottlenecks: bottlenecks(
+    ["Des appels qui échouent sur de mauvais réseaux mobiles", "Relais TURN dans la région, débit adaptatif et repli sur l'audio seul."],
+    ["Protéger les données de santé", "Chiffrement avec des clés gérées, contrôle d'accès strict par rôle et journaux d'audit à chaque accès."],
+    ["Créneaux réservés deux fois", "Retenues pendant le paiement plus confirmation conditionnelle en base."],
+  ),
+  scaling: [
+    "Garder les données de santé dans le pays pour respecter les règles de résidence des données.",
+    "Dimensionner les relais média selon le nombre d'appels simultanés.",
+    "Partitionner les rendez-vous par région.",
+  ],
+  extensions: [
+    "Réservation d'analyses de laboratoire et prélèvements à domicile.",
+    "Livraison de médicaments à partir des ordonnances.",
+    "Vérificateur de symptômes par IA avant la réservation.",
+  ],
+};

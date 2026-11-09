@@ -19,6 +19,7 @@ import PacketEdge from "./PacketEdge";
 import type { Provider, SystemDesign } from "@/types/schema";
 import { edgeStyles, systemToFlow, type FlowHighlight } from "@/lib/transformDiagram";
 import { layoutSystem, type SystemLayout } from "@/lib/layout";
+import { useLocale, useMessages } from "@/i18n/client";
 
 const nodeTypes = { architecture: ArchitectureNode, tier: TierNode };
 const edgeTypes = { packet: PacketEdge };
@@ -41,6 +42,8 @@ export default function ArchitectureDiagram({
   onNodeSelect,
   staticView = false,
 }: ArchitectureDiagramProps) {
+  const locale = useLocale();
+  const t = useMessages();
   const [computed, setComputed] = useState<{
     slug: string;
     layout: SystemLayout;
@@ -59,8 +62,8 @@ export default function ArchitectureDiagram({
   const layout = computed?.slug === system.slug ? computed.layout : null;
 
   const graph = useMemo(
-    () => (layout ? systemToFlow(system, provider, layout, selectedNodeId, flowHighlight) : null),
-    [system, provider, layout, selectedNodeId, flowHighlight],
+    () => (layout ? systemToFlow(system, provider, layout, selectedNodeId, flowHighlight, locale) : null),
+    [system, provider, layout, selectedNodeId, flowHighlight, locale],
   );
 
   const protocols = useMemo(
@@ -84,7 +87,7 @@ export default function ArchitectureDiagram({
         />
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 p-8" role="status">
-          <span className="sr-only">Laying out diagram…</span>
+          <span className="sr-only">{t.diagram.layingOut}</span>
           {[3, 4, 2].map((count, row) => (
             <div key={row} className="flex gap-4" aria-hidden>
               {Array.from({ length: count }, (_, i) => (
@@ -115,6 +118,7 @@ function FlowCanvas({
 }: FlowCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(nextNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(nextEdges);
+  const t = useMessages();
 
   useEffect(() => {
     setNodes(nextNodes);
@@ -171,7 +175,7 @@ function FlowCanvas({
                       strokeDasharray={style.dash}
                     />
                   </svg>
-                  {style.label}
+                  {t.diagram.protocols[p]}
                 </li>
               );
             })}

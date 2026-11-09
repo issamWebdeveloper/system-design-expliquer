@@ -1,13 +1,15 @@
-import { components, concepts, getComponentKind, getConcept, systemCategoryLabels, systems } from "@/content";
+import { getContent } from "@/content";
+import { localizeHref, type Locale } from "@/i18n/config";
 import type { SearchItem } from "./search-match";
 
 /** Built on the server and handed to the client palette as plain data. */
-export function buildSearchIndex(): SearchItem[] {
+export function buildSearchIndex(locale: Locale = "en"): SearchItem[] {
+  const { components, concepts, getComponentKind, getConcept, systemCategoryLabels, systems } = getContent(locale);
   const systemItems = systems.map((s) => ({
     type: "System" as const,
     title: s.name,
     subtitle: s.tagline,
-    href: `/systems/${s.slug}`,
+    href: localizeHref(`/systems/${s.slug}`, locale),
     keywords: [
       s.description,
       systemCategoryLabels[s.category],
@@ -20,7 +22,7 @@ export function buildSearchIndex(): SearchItem[] {
     type: "Component" as const,
     title: c.name,
     subtitle: c.what,
-    href: `/components/${c.id}`,
+    href: localizeHref(`/components/${c.id}`, locale),
     keywords: [
       ...Object.values(c.providers).flatMap((options) => options?.map((o) => o.name) ?? []),
       ...c.thirdParty.map((o) => o.name),
@@ -31,7 +33,7 @@ export function buildSearchIndex(): SearchItem[] {
     type: "Concept" as const,
     title: c.name,
     subtitle: c.summary,
-    href: `/concepts/${c.slug}`,
+    href: localizeHref(`/concepts/${c.slug}`, locale),
     keywords: [...c.explanation, ...c.related].join(" "),
   }));
 

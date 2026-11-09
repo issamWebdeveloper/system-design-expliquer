@@ -1,0 +1,106 @@
+import type { SystemTranslation } from "../../translation";
+import { apis, bottlenecks, dataModel, edges, estimates, flows, nodes } from "../helpers";
+
+export const airbnb: SystemTranslation = {
+  tagline: "Rechercher, réserver et échanger pour des locations de vacances",
+  description:
+    "La recherche combine un index géographique des annonces avec le calendrier de disponibilité de chacune, pour ne montrer que les logements libres à vos dates. Réserver bloque ces nuits par une écriture conditionnelle sur le calendrier, autorise le paiement et verse l'argent à l'hôte après l'arrivée. Voyageurs et hôtes échangent en temps réel, et les photos sont servies par un CDN.",
+  requirements: {
+    functional: [
+      "Les hôtes créent des annonces avec photos, prix, règles et calendrier de disponibilité",
+      "Les voyageurs cherchent par lieu, dates, nombre de personnes, prix et équipements, sur une carte",
+      "Réservation instantanée ou demande soumise à l'accord de l'hôte",
+      "Paiement retenu jusqu'à l'arrivée, puis versé à l'hôte",
+      "Messagerie voyageur–hôte et avis dans les deux sens",
+    ],
+    nonFunctional: [
+      "Ne jamais réserver deux fois les mêmes nuits",
+      "La recherche répond en moins d'une seconde",
+      "Hautement disponible pour la navigation ; la réservation peut être strictement cohérente",
+      "Paiements et versements dans de nombreuses devises",
+    ],
+  },
+  apis: apis(
+    "Annonces disponibles dans une zone de la carte",
+    "Détails de l'annonce, photos, règles, prix pour des dates",
+    "Réserver des dates (Idempotency-Key) ; instantané ou en attente de l'hôte",
+    "L'hôte bloque des dates ou change ses prix",
+    "Messages voyageur–hôte en temps réel",
+  ),
+  estimates: estimates(
+    ["Annonces", "≈ 7 M", "Hypothèse fondée sur des chiffres publics"],
+    ["Recherches", "≈ 2–5 k/s en pointe", "Navigation dominée par la lecture"],
+    ["Nuits de calendrier", "≈ 2,5 Md de lignes", "7 M d'annonces × 365 jours à l'avance"],
+    ["Réservations", "≈ 1–2 M/jour", "Hypothèse ; ~20/s en moyenne"],
+  ),
+  dataModel: dataModel(
+    ["Annonce", "Base relationnelle + index de recherche", "Modifiée par les hôtes, recherchée par les voyageurs"],
+    ["Nuit de calendrier", "Base relationnelle, shardée par listingId", "Réserver = mise à jour conditionnelle d'une plage de nuits en une transaction"],
+    ["Réservation", "Base relationnelle", "L'argent et les dates doivent concorder"],
+    ["Message", "Base orientée colonnes larges", "Beaucoup d'ajouts, lecture par conversation"],
+  ),
+  nodes: nodes({
+    guest: ["Web / appli voyageur", "Rechercher, réserver, écrire"],
+    host: ["Appli hôte", "Gérer annonces, calendrier et demandes"],
+    cdn: ["CDN des photos", "Photos des annonces en plusieurs tailles"],
+    gateway: ["Passerelle d'API", "Authentification, limites de débit, routage"],
+    "search-svc": ["Service de recherche", "Requête géographique et filtres, puis vérification de disponibilité et classement"],
+    "listing-index": ["Index des annonces", "Annonces avec point géographique et équipements"],
+    ranking: ["Modèles de classement et de prix", "Ordonnent les résultats ; suggèrent des prix aux hôtes"],
+    "listing-svc": ["Service des annonces", "Gestion des annonces et envoi des photos"],
+    "availability-svc": ["Service de disponibilité", "Calendriers et réservation de dates"],
+    "booking-svc": ["Service de réservation", "Cycle de vie de la réservation"],
+    "payment-svc": ["Paiements et versements", "Autorise à la réservation, capture, paie les hôtes après l'arrivée"],
+    psp: ["Prestataire de paiement", "Cartes et versements dans de nombreuses devises"],
+    messaging: ["Messagerie", "Discussion voyageur–hôte"],
+    "main-db": ["Annonces, calendriers et réservations", "Shardés par annonce"],
+    photos: ["Photos", "Images d'origine et redimensionnées"],
+    events: ["Événements de la place de marché", "Changements d'annonces, réservations"],
+    notify: ["E-mail et push", "Confirmations de réservation et rappels"],
+  }),
+  edges: edges({
+    "guest-cdn": "Photos",
+    "search-index": "Géo + filtres",
+    "search-availability": "Libre à ces dates ?",
+    "host-photos": "Envoi (pré-signé)",
+    "booking-availability": "Réserver les nuits",
+    "events-index": "Réindexer",
+  }),
+  flows: flows({
+    search: [
+      "Chercher un logement",
+      "Le voyageur cherche dans une zone de la carte pour 3 nuits.",
+      "Le service de recherche lance la requête.",
+      "L'index renvoie les annonces de la zone qui correspondent aux filtres.",
+      "Les candidates sont vérifiées dans les calendriers pour ces nuits précises.",
+      "Les annonces disponibles sont classées par pertinence, qualité et prix.",
+      "Les photos se chargent depuis le CDN.",
+    ],
+    book: [
+      "Réservation instantanée",
+      "Le voyageur réserve avec une clé d'idempotence.",
+      "Le service de réservation lance la réservation.",
+      "Le service de disponibilité réserve les nuits.",
+      "Toutes les nuits passent de libres à réservées en une transaction — seulement si chacune est encore libre.",
+      "Le paiement est autorisé (capturé à l'arrivée).",
+      "La carte est autorisée.",
+      "« Réservation confirmée » est publié.",
+      "Voyageur et hôte reçoivent une confirmation.",
+    ],
+  }),
+  bottlenecks: bottlenecks(
+    ["Combiner recherche géographique et disponibilité par date", "Filtrer par lieu dans l'index, puis vérifier les calendriers par lots pour les meilleures candidates ; garder un indicateur « disponible » approximatif dans l'index pour aller vite."],
+    ["Deux voyageurs qui réservent les mêmes dates", "Mise à jour conditionnelle sur toute la plage de dates, dans une transaction sur le shard de l'annonce."],
+    ["De gros volumes de photos", "Envois directs, redimensionnement asynchrone et livraison par CDN dans des formats modernes."],
+  ),
+  scaling: [
+    "Sharder annonces, calendriers et réservations par listingId pour qu'une réservation reste sur un shard.",
+    "Répliquer l'index de recherche par région.",
+    "Garder la messagerie sur sa propre couche temps réel.",
+  ],
+  extensions: [
+    "Expériences et activités en plus des logements.",
+    "Suggestions de prix intelligentes pour les hôtes.",
+    "Confiance et sécurité : vérification d'identité et score de fraude.",
+  ],
+};

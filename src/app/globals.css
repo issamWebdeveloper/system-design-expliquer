@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/*
+ * Semantic design tokens. Components use these names (bg-surface, text-muted,
+ * border-line …) and never raw greys, so each theme only redefines the values.
+ */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-soft: var(--fg-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  /* Identity colours: the current page's category or concept family. */
+  --color-cat: var(--cat);
+  --color-cat-tint: var(--cat-tint);
+  --color-fam: var(--fam);
+  --color-fam-tint: var(--fam-tint);
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-rise: rise 300ms ease-out both;
+  --animate-flash: flash 600ms ease-out;
+}
+
+/* Dark (default): deep navy with soft depth. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0f1e;
+  --surface: #111830;
+  --surface-2: #172040;
+  --line: #1f2a4a;
+  --line-strong: #2c3a63;
+  --fg: #eef1f8;
+  --fg-soft: #c9d0e4;
+  --muted: #9aa4c0;
+  --faint: #5b6788;
+  --accent: #818cf8;
+  --accent-2: #a78bfa;
+  --accent-3: #22d3ee;
+  --accent-soft: rgb(129 140 248 / 0.16);
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 10px 30px rgb(0 0 0 / 0.35);
+
+  /* Categories: solid colour for icons and edges, tint for backgrounds, glow for hover. */
+  --cat-media: #fb7185;
+  --cat-mobility: #fbbf24;
+  --cat-commerce: #34d399;
+  --cat-bookings: #a78bfa;
+  --cat-infra: #38bdf8;
+  /* Concept families. */
+  --fam-data: #60a5fa;
+  --fam-scale: #fb923c;
+  --fam-messaging: #c084fc;
+  --fam-reliability: #4ade80;
+  --fam-security: #f87171;
+  --tint-strength: 16%;
+  --glow-strength: 38%;
+
+  --provider-generic: #9aa4c0;
+  --provider-aws: #ff9900;
+  --provider-gcp: #669df6;
+  --provider-azure: #50a0e8;
+  --provider-oss: #4ade80;
+  /* Text on a provider-coloured pill. */
+  --on-provider: #0a0f1e;
+
+  --cat: var(--accent);
+  --fam: var(--accent);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --surface-2: #f5f5f4;
+  --line: #e7e5e4;
+  --line-strong: #d6d3d1;
+  --fg: #1c1917;
+  --fg-soft: #44403c;
+  --muted: #57534e;
+  --faint: #a8a29e;
+  --accent: #4f46e5;
+  --accent-2: #7c3aed;
+  --accent-3: #0891b2;
+  --accent-soft: rgb(79 70 229 / 0.08);
+  --shadow: 0 1px 2px rgb(28 25 23 / 0.06), 0 8px 24px rgb(28 25 23 / 0.06);
+
+  --cat-media: #e11d48;
+  --cat-mobility: #d97706;
+  --cat-commerce: #059669;
+  --cat-bookings: #7c3aed;
+  --cat-infra: #0284c7;
+  --fam-data: #2563eb;
+  --fam-scale: #ea580c;
+  --fam-messaging: #9333ea;
+  --fam-reliability: #16a34a;
+  --fam-security: #dc2626;
+  --tint-strength: 9%;
+  --glow-strength: 28%;
+
+  /* Accent tints used for text get darker for contrast on white. */
+  --color-indigo-200: #3730a3;
+  --color-indigo-300: #4338ca;
+  --color-emerald-300: #047857;
+  --color-sky-300: #0369a1;
+  --color-amber-300: #b45309;
+  --color-rose-200: #9f1239;
+  --color-rose-300: #be123c;
+  --color-violet-300: #6d28d9;
+  --color-cyan-300: #0e7490;
+
+  --provider-generic: #57534e;
+  --provider-aws: #c2410c;
+  --provider-gcp: #1d4ed8;
+  --provider-azure: #0369a1;
+  --provider-oss: #15803d;
+  --on-provider: #ffffff;
+}
+
+/* A band that stays dark in both themes (e.g. learning paths on the home page). */
+.scope-dark {
+  color-scheme: dark;
+  --bg: #0a0f1e;
+  --surface: #111830;
+  --surface-2: #172040;
+  --line: #24305a;
+  --line-strong: #2c3a63;
+  --fg: #eef1f8;
+  --fg-soft: #c9d0e4;
+  --muted: #9aa4c0;
+  --faint: #5b6788;
+  --accent: #a5b4fc;
+  --accent-soft: rgb(165 180 252 / 0.16);
+  --cat-media: #fb7185;
+  --cat-mobility: #fbbf24;
+  --cat-commerce: #34d399;
+  --cat-bookings: #a78bfa;
+  --cat-infra: #38bdf8;
+  --tint-strength: 16%;
+  --glow-strength: 38%;
+}
+
+/* Page-level identity: set data-category / data-family on a wrapper. */
+[data-category="media-social"] { --cat: var(--cat-media); }
+[data-category="mobility"] { --cat: var(--cat-mobility); }
+[data-category="commerce-fintech"] { --cat: var(--cat-commerce); }
+[data-category="bookings"] { --cat: var(--cat-bookings); }
+[data-category="infrastructure"] { --cat: var(--cat-infra); }
+[data-family="data"] { --fam: var(--fam-data); --cat: var(--fam-data); }
+[data-family="scale"] { --fam: var(--fam-scale); --cat: var(--fam-scale); }
+[data-family="messaging"] { --fam: var(--fam-messaging); --cat: var(--fam-messaging); }
+[data-family="reliability"] { --fam: var(--fam-reliability); --cat: var(--fam-reliability); }
+[data-family="security"] { --fam: var(--fam-security); --cat: var(--fam-security); }
+
+:root,
+[data-category],
+[data-family],
+.scope-dark {
+  --cat-tint: color-mix(in srgb, var(--cat) var(--tint-strength), transparent);
+  --cat-glow: color-mix(in srgb, var(--cat) var(--glow-strength), transparent);
+  --fam-tint: color-mix(in srgb, var(--fam) var(--tint-strength), transparent);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Visible keyboard focus everywhere, without rings on mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Real utilities (not plain classes) so variants like hover:shadow-glow work. */
+@utility shadow-soft {
+  box-shadow: var(--shadow);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow), 0 8px 28px -6px var(--cat-glow);
+}
+@utility bg-brand {
+  background-image: linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--accent-3));
+}
+@utility text-brand {
+  background-image: linear-gradient(120deg, var(--accent), var(--accent-2) 50%, var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility border-brand {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3)) border-box;
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes flash {
+  0% { box-shadow: 0 0 0 0 var(--flash-colour, var(--accent)); }
+  40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--flash-colour, var(--accent)) 45%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6%, -4%) scale(1.08); }
+  66% { transform: translate(-5%, 5%) scale(0.95); }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .react-flow__edge.animated path {
+    animation: none;
+  }
+
+  /* SMIL motion ignores CSS durations, so hide the walkthrough packet instead. */
+  .flow-packet {
+    display: none;
+  }
+}

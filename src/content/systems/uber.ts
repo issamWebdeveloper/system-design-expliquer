@@ -1,0 +1,222 @@
+import type { SystemDesignInput } from "@/types/schema";
+
+export const uber: SystemDesignInput = {
+  slug: "uber",
+  name: "Uber",
+  tagline: "Real-time ride matching at global scale",
+  description:
+    "Every online driver streams a GPS point every few seconds into a geo index sharded by map cell. A ride request finds nearby drivers in that index, ranks them by real road ETA, and offers the trip to one driver at a time. A trip service runs the ride's state machine, a stream processor turns supply and demand into surge prices, and payment happens asynchronously when the trip ends.",
+  category: "mobility",
+  difficulty: 3,
+  concepts: ["geospatial-indexing", "websockets", "distributed-locks", "idempotency", "event-driven", "multi-region"],
+
+  requirements: {
+    functional: [
+      "Riders and drivers sign up; drivers are verified (licence, vehicle)",
+      "Riders see nearby cars and an upfront fare estimate",
+      "Request a ride and get matched to a nearby driver within seconds",
+      "Live tracking of the driver before pickup and during the trip, with ETA",
+      "Trip lifecycle: requested → matched → arrived → in progress → completed / cancelled",
+      "Automatic payment, receipts and two-way ratings",
+    ],
+    nonFunctional: [
+      "Matching in a few seconds; location updates reflected within ~1 s",
+      "Never assign one driver to two riders at once",
+      "Highly available per city: one region's outage shouldn't stop others",
+      "Payments are exactly-once and auditable",
+      "Handles rush-hour and event spikes several times the average",
+    ],
+  },
+
+  apis: [
+    { method: "POST", path: "/rides/estimate", purpose: "Fare and ETA estimate for pickup → destination" },
+    { method: "POST", path: "/rides", purpose: "Request a ride; returns rideId with status REQUESTED" },
+    { method: "POST", path: "/rides/{rideId}/cancel", purpose: "Cancel (fees may apply after a grace period)" },
+    { method: "WS", path: "/driver/socket → location(lat, lng, heading)", purpose: "Driver app streams GPS every ~4 s" },
+    { method: "WS", path: "/driver/socket ← offer(rideId) / accept", purpose: "Ride offers pushed to a driver, who accepts or declines" },
+    { method: "POST", path: "/rides/{rideId}/status", purpose: "Driver marks arrived, started, completed" },
+    { method: "WS", path: "/rider/socket ← driverLocation, eta, status", purpose: "Live tracking for the rider" },
+    { method: "POST", path: "/rides/{rideId}/rating", purpose: "Rate the other party" },
+  ],
+
+  estimates: [
+    { label: "Rides per day", value: "≈ 10 M (~115/s)", derivation: "Assumption; peaks above 500 ride requests/s" },
+    { label: "Online drivers at peak", value: "≈ 1 M", derivation: "Assumption across all cities" },
+    { label: "Location updates", value: "≈ 250 k/s", derivation: "1 M drivers ÷ one update every 4 s" },
+    { label: "Location data", value: "≈ 2 TB/day", derivation: "250 k/s × 86,400 s × ~100 bytes per point" },
+    { label: "Open connections", value: "≈ 2–3 M", derivation: "Online drivers plus riders with an active trip or request" },
+  ],
+
+  dataModel: [
+    {
+      entity: "Ride",
+      store: "Relational DB, sharded by city",
+      key: "rideId",
+      fields: ["riderId", "driverId", "status", "pickup", "dropoff", "fare", "surgeMultiplier", "timestamps"],
+      why: "State transitions need transactions (no double assignment, exactly-once completion)",
+    },
+    {
+      entity: "Driver location (live)",
+      store: "In-memory geo index",
+      key: "S2/H3 cell → set of driverIds",
+      fields: ["lat", "lng", "heading", "status", "updatedAt"],
+      why: "Overwritten every few seconds; 'who is near here' must be a single lookup",
+    },
+    {
+      entity: "Location history",
+      store: "Time-series DB",
+      key: "driverId + time",
+      fields: ["lat", "lng", "speed", "rideId"],
+      why: "Route reconstruction, fare disputes, ETA model training",
+    },
+    {
+      entity: "Rider / Driver",
+      store: "Relational DB",
+      key: "userId / driverId",
+      fields: ["name", "phone", "rating", "vehicle", "documents", "paymentToken"],
+      why: "Account data with verification workflows",
+    },
+    {
+      entity: "Payment",
+      store: "Relational DB (ledger)",
+      key: "paymentId (idempotency key = rideId)",
+      fields: ["rideId", "amount", "currency", "status", "providerRef"],
+      why: "Money must be exactly-once and reconcilable",
+    },
+  ],
+
+  nodes: [
+    { id: "rider-app", kind: "mobile-client", label: "Rider app", role: "Request rides, watch the driver approach, pay" },
+    { id: "driver-app", kind: "mobile-client", label: "Driver app", role: "Streams GPS, receives offers, updates trip status" },
+    { id: "gateway", kind: "api-gateway", label: "API gateway", role: "Auth, rate limiting and routing for HTTPS calls" },
+    { id: "rt-gateway", kind: "realtime-gateway", label: "Real-time gateway", role: "Persistent connections for GPS pings, offers and live tracking" },
+    { id: "location-svc", kind: "service", label: "Location service", role: "Updates the geo index and publishes driver positions" },
+    { id: "matching-svc", kind: "service", label: "Matching / dispatch", role: "Finds candidates, ranks by ETA, locks and offers to one driver" },
+    { id: "trip-svc", kind: "service", label: "Trip service", role: "Owns the ride state machine" },
+    { id: "pricing-svc", kind: "service", label: "Pricing service", role: "Fare estimates with surge multipliers" },
+    { id: "payment-svc", kind: "service", label: "Payment service", role: "Charges riders and records payouts when a trip completes" },
+    { id: "maps", kind: "maps", label: "Maps, routing & ETA", role: "Road distance and travel time" },
+    { id: "events", kind: "event-stream", label: "Trip & location events", role: "Every ride status change and GPS ping" },
+    { id: "surge", kind: "stream-processor", label: "Surge computation", role: "Supply vs demand per cell, every minute" },
+    { id: "geo-index", kind: "cache", label: "Geo index", role: "Driver positions bucketed by S2 cell; also holds assignment locks" },
+    { id: "trip-db", kind: "relational-db", label: "Trips & accounts", role: "Rides, riders, drivers and payments, sharded by city" },
+    { id: "history-db", kind: "time-series-db", label: "Location history", role: "Every GPS point for analytics and disputes" },
+    { id: "psp", kind: "payments", label: "Payment provider", role: "Card and wallet processing" },
+    { id: "push", kind: "notifications", label: "Push / SMS", role: "Driver arriving, receipts" },
+  ],
+
+  edges: [
+    { id: "driver-rt", from: "driver-app", to: "rt-gateway", label: "GPS every 4 s", protocol: "ws" },
+    { id: "rider-rt", from: "rider-app", to: "rt-gateway", label: "Live tracking", protocol: "ws" },
+    { id: "rider-gateway", from: "rider-app", to: "gateway", label: "Request ride" },
+    { id: "driver-gateway", from: "driver-app", to: "gateway", label: "Trip status" },
+    { id: "rt-location", from: "rt-gateway", to: "location-svc", protocol: "grpc" },
+    { id: "location-geo", from: "location-svc", to: "geo-index", label: "Update cell" },
+    { id: "location-events", from: "location-svc", to: "events", protocol: "stream" },
+    { id: "gateway-trip", from: "gateway", to: "trip-svc", protocol: "grpc" },
+    { id: "gateway-pricing", from: "gateway", to: "pricing-svc", label: "Estimate", protocol: "grpc" },
+    { id: "trip-matching", from: "trip-svc", to: "matching-svc", label: "Find driver", protocol: "grpc" },
+    { id: "matching-geo", from: "matching-svc", to: "geo-index", label: "Nearby drivers + lock" },
+    { id: "matching-maps", from: "matching-svc", to: "maps", label: "ETA" },
+    { id: "matching-offer", from: "matching-svc", to: "rt-gateway", label: "Offer", protocol: "ws" },
+    { id: "trip-db-write", from: "trip-svc", to: "trip-db" },
+    { id: "trip-events", from: "trip-svc", to: "events", label: "Status changes", protocol: "stream" },
+    { id: "trip-push", from: "trip-svc", to: "push" },
+    { id: "pricing-maps", from: "pricing-svc", to: "maps", label: "Route" },
+    { id: "events-surge", from: "events", to: "surge", protocol: "stream" },
+    { id: "surge-pricing", from: "surge", to: "pricing-svc", label: "Multipliers" },
+    { id: "events-payment", from: "events", to: "payment-svc", label: "Trip completed", protocol: "async" },
+    { id: "payment-psp", from: "payment-svc", to: "psp", label: "Charge" },
+    { id: "payment-db", from: "payment-svc", to: "trip-db", label: "Ledger" },
+    { id: "events-history", from: "events", to: "history-db", label: "Archive", protocol: "stream" },
+  ],
+
+  flows: [
+    {
+      id: "location",
+      name: "Driver location update",
+      steps: [
+        { edge: "driver-rt", text: "Every ~4 seconds the driver app sends its position over the open connection." },
+        { edge: "rt-location", text: "The gateway forwards it to the location service." },
+        { edge: "location-geo", text: "The driver is moved into the right S2 cell in the in-memory geo index (and out of the old one)." },
+        { edge: "location-events", text: "The point is published to the event stream." },
+        { edge: "events-surge", text: "Surge computation counts available drivers per cell." },
+        { edge: "events-history", text: "The point is archived for analytics and disputes." },
+      ],
+    },
+    {
+      id: "request",
+      name: "Request a ride",
+      steps: [
+        { edge: "rider-gateway", text: "The rider confirms pickup and destination." },
+        { edge: "gateway-pricing", text: "Pricing returns an upfront fare using route distance and the current surge multiplier." },
+        { edge: "gateway-trip", text: "The trip service creates the ride…" },
+        { edge: "trip-db-write", text: "…stored with status REQUESTED." },
+        { edge: "trip-matching", text: "It asks matching for a driver." },
+        { edge: "matching-geo", text: "Matching reads available drivers in the pickup cell and its neighbours, and locks the best candidate." },
+        { edge: "matching-maps", text: "Candidates are ranked by real road ETA, not straight-line distance." },
+        { edge: "matching-offer", text: "The offer is pushed to the chosen driver; if they decline or time out, the next one is tried." },
+        { edge: "trip-events", text: "On accept the ride becomes MATCHED and the event is published." },
+        { edge: "rider-rt", text: "The rider sees the driver's live position and ETA." },
+      ],
+    },
+    {
+      id: "complete",
+      name: "Finish and pay",
+      steps: [
+        { edge: "driver-gateway", text: "The driver ends the trip." },
+        { edge: "gateway-trip", text: "The trip service validates the transition." },
+        { edge: "trip-db-write", text: "The ride becomes COMPLETED with the final fare." },
+        { edge: "trip-events", text: "A 'trip completed' event is published." },
+        { edge: "events-payment", text: "The payment service consumes it, using the rideId as the idempotency key." },
+        { edge: "payment-psp", text: "The rider's card is charged." },
+        { edge: "payment-db", text: "The charge and driver payout are recorded in the ledger." },
+        { edge: "trip-push", text: "Both parties get a receipt and a rating prompt." },
+      ],
+    },
+  ],
+
+  bottlenecks: [
+    {
+      problem: "Hundreds of thousands of GPS writes per second",
+      fix: "Keep live positions only in memory, sharded by geo cell; send history to a separate append-only store asynchronously.",
+      nodes: ["location-svc", "geo-index", "history-db"],
+    },
+    {
+      problem: "Two riders matched to the same driver",
+      fix: "Take a short-lived lock on the driver in the geo index before offering; release it on decline or timeout.",
+      nodes: ["matching-svc", "geo-index"],
+    },
+    {
+      problem: "Dense cities create hot cells",
+      fix: "Use smaller cells where density is high and shard the index by city/cell so busy areas get more nodes.",
+      nodes: ["geo-index"],
+    },
+    {
+      problem: "Calling the maps API for every candidate is slow and expensive",
+      fix: "Pre-filter by straight-line distance, call ETA only for the top few candidates, and cache routes between cells.",
+      nodes: ["matching-svc", "maps"],
+    },
+    {
+      problem: "Retried payment calls could double-charge",
+      fix: "Idempotency key per ride; consume completion events at-least-once but charge exactly once.",
+      nodes: ["payment-svc", "psp"],
+    },
+  ],
+
+  scaling: [
+    "Partition everything by city or region — most rides never cross one — so each region scales and fails independently.",
+    "Shard the geo index by S2 cell with consistent hashing; replicate for failover.",
+    "Stateless services behind the gateways autoscale on request rate.",
+    "Scale the real-time gateway horizontally; a connection registry tracks which node holds each user.",
+    "Use the event stream to decouple payments, analytics, surge and notifications from the ride path.",
+  ],
+
+  extensions: [
+    "Shared rides (pooling) that match riders heading the same way.",
+    "Scheduled rides booked in advance.",
+    "Fraud detection on GPS spoofing and payment patterns.",
+    "Machine-learned ETAs trained on location history.",
+    "Food delivery reusing the same dispatch and tracking platform.",
+  ],
+};

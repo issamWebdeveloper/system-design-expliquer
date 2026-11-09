@@ -1,0 +1,103 @@
+import { createElement } from "react";
+import {
+  AtSign,
+  Box,
+  BriefcaseBusiness,
+  Building2,
+  CalendarClock,
+  Camera,
+  Car,
+  CarFront,
+  ChartCandlestick,
+  ClipboardList,
+  CreditCard,
+  Database,
+  FolderSync,
+  Gauge,
+  House,
+  IdCard,
+  Link2,
+  Lock,
+  Luggage,
+  MapPinned,
+  Maximize2,
+  MemoryStick,
+  MessageCircle,
+  MessageCircleQuestion,
+  MonitorPlay,
+  Plane,
+  Radio,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Stethoscope,
+  TextCursorInput,
+  Ticket,
+  Trophy,
+  Truck,
+  Tv,
+  Bug,
+  UtensilsCrossed,
+  Video,
+  Wallet,
+  Waypoints,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
+import type { ConceptFamily } from "@/types/schema";
+
+/** Brand-neutral glyph per system, shown in a category-tinted tile. */
+export const systemIcons: Record<string, LucideIcon> = {
+  youtube: MonitorPlay,
+  netflix: Tv,
+  instagram: Camera,
+  twitter: AtSign,
+  whatsapp: MessageCircle,
+  uber: Car,
+  amazon: ShoppingCart,
+  payments: CreditCard,
+  "url-shortener": Link2,
+  "rate-limiter": Gauge,
+  typeahead: TextCursorInput,
+  "web-crawler": Bug,
+  pastebin: ClipboardList,
+  dropbox: FolderSync,
+  "google-maps": MapPinned,
+  "websocket-scale": Radio,
+  webrtc: Video,
+  bookmyshow: Ticket,
+  makemytrip: Luggage,
+  airline: Plane,
+  airbnb: House,
+  nobroker: Building2,
+  "meeting-scheduler": CalendarClock,
+  "car-rental": CarFront,
+  zomato: UtensilsCrossed,
+  "urban-company": Wrench,
+  porter: Truck,
+  "driver-fleet": IdCard,
+  practo: Stethoscope,
+  astrotalk: Sparkles,
+  quora: MessageCircleQuestion,
+  linkedin: BriefcaseBusiness,
+  bnpl: Wallet,
+  "stock-brokerage": ChartCandlestick,
+  "live-sports": Trophy,
+  redis: MemoryStick,
+};
+
+export const familyIcons: Record<ConceptFamily, LucideIcon> = {
+  data: Database,
+  scale: Maximize2,
+  messaging: Waypoints,
+  reliability: ShieldCheck,
+  security: Lock,
+};
+
+export function SystemIcon({ slug, size = 18 }: { slug: string; size?: number }) {
+  return createElement(systemIcons[slug] ?? Box, { size, "aria-hidden": true });
+}
+
+export function FamilyIcon({ family, size = 18 }: { family: ConceptFamily; size?: number }) {
+  return createElement(familyIcons[family], { size, "aria-hidden": true });
+}

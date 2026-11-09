@@ -3,12 +3,15 @@ import { airbnb } from "./airbnb";
 import { airline } from "./airline";
 import { amazon } from "./amazon";
 import { astrotalk } from "./astrotalk";
+import { bnpl } from "./bnpl";
 import { bookmyshow } from "./bookmyshow";
 import { carRental } from "./car-rental";
 import { driverFleet } from "./driver-fleet";
 import { dropbox } from "./dropbox";
 import { googleMaps } from "./google-maps";
 import { instagram } from "./instagram";
+import { linkedin } from "./linkedin";
+import { liveSports } from "./live-sports";
 import { makemytrip } from "./makemytrip";
 import { meetingScheduler } from "./meeting-scheduler";
 import { netflix } from "./netflix";
@@ -17,7 +20,10 @@ import { pastebin } from "./pastebin";
 import { payments } from "./payments";
 import { porter } from "./porter";
 import { practo } from "./practo";
+import { quora } from "./quora";
 import { rateLimiter } from "./rate-limiter";
+import { redis } from "./redis";
+import { stockBrokerage } from "./stock-brokerage";
 import { twitter } from "./twitter";
 import { typeahead } from "./typeahead";
 import { uber } from "./uber";
@@ -36,12 +42,15 @@ export const frSystems: NonNullable<ContentTranslation["systems"]> = {
   airline,
   amazon,
   astrotalk,
+  bnpl,
   bookmyshow,
   "car-rental": carRental,
   "driver-fleet": driverFleet,
   dropbox,
   "google-maps": googleMaps,
   instagram,
+  linkedin,
+  "live-sports": liveSports,
   makemytrip,
   "meeting-scheduler": meetingScheduler,
   netflix,
@@ -50,7 +59,10 @@ export const frSystems: NonNullable<ContentTranslation["systems"]> = {
   payments,
   porter,
   practo,
+  quora,
   "rate-limiter": rateLimiter,
+  redis,
+  "stock-brokerage": stockBrokerage,
   twitter,
   typeahead,
   uber,

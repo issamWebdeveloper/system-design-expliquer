@@ -54,7 +54,8 @@ function coverage(base: unknown, overlay: unknown): { total: number; done: numbe
   if (isObject(base)) {
     return sum(
       Object.entries(base)
-        .filter(([k]) => !notProse.has(k))
+        // An array of plain strings under `nodes` is a list of node ids (bottlenecks), not text.
+        .filter(([k, v]) => !notProse.has(k) && !(k === "nodes" && Array.isArray(v) && v.every((x) => typeof x === "string")))
         .map(([k, v]) => coverage(v, isObject(overlay) ? overlay[k] : undefined)),
     );
   }

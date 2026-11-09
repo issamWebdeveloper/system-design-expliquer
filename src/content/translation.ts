@@ -22,3 +22,6 @@ export interface ContentTranslation {
   concepts?: Record<string, Overlay<Concept>>;
   systems?: Record<string, Overlay<SystemDesign>>;
 }
+
+/** The French (or any) translation of one system design. */
+export type SystemTranslation = Overlay<SystemDesign>;
